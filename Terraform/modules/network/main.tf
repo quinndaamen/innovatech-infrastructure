@@ -123,3 +123,100 @@ resource "aws_subnet" "monitoring_private_2" {
     Environment = var.environment
   }
 }
+
+
+
+resource "aws_internet_gateway" "compute" {
+  vpc_id = aws_vpc.compute.id
+
+  tags = {
+    Name        = "${var.environment}-compute-igw"
+    Environment = var.environment
+  }
+}
+
+
+resource "aws_route_table" "compute_public" {
+  vpc_id = aws_vpc.compute.id
+
+  tags = {
+    Name        = "${var.environment}-compute-public-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route" "compute_public_internet" {
+  route_table_id         = aws_route_table.compute_public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.compute.id
+}
+
+resource "aws_route_table_association" "compute_public_1" {
+  subnet_id      = aws_subnet.compute_public_1.id
+  route_table_id = aws_route_table.compute_public.id
+}
+
+resource "aws_route_table_association" "compute_public_2" {
+  subnet_id      = aws_subnet.compute_public_2.id
+  route_table_id = aws_route_table.compute_public.id
+}
+
+
+resource "aws_route_table" "compute_private" {
+  vpc_id = aws_vpc.compute.id
+
+  tags = {
+    Name        = "${var.environment}-compute-private-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table_association" "compute_private_1" {
+  subnet_id      = aws_subnet.compute_private_1.id
+  route_table_id = aws_route_table.compute_private.id
+}
+
+resource "aws_route_table_association" "compute_private_2" {
+  subnet_id      = aws_subnet.compute_private_2.id
+  route_table_id = aws_route_table.compute_private.id
+}
+
+
+resource "aws_route_table" "database_private" {
+  vpc_id = aws_vpc.database.id
+
+  tags = {
+    Name        = "${var.environment}-database-private-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table_association" "database_private_1" {
+  subnet_id      = aws_subnet.database_private_1.id
+  route_table_id = aws_route_table.database_private.id
+}
+
+resource "aws_route_table_association" "database_private_2" {
+  subnet_id      = aws_subnet.database_private_2.id
+  route_table_id = aws_route_table.database_private.id
+}
+
+
+resource "aws_route_table" "monitoring_private" {
+  vpc_id = aws_vpc.monitoring.id
+
+  tags = {
+    Name        = "${var.environment}-monitoring-private-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table_association" "monitoring_private_1" {
+  subnet_id      = aws_subnet.monitoring_private_1.id
+  route_table_id = aws_route_table.monitoring_private.id
+}
+
+resource "aws_route_table_association" "monitoring_private_2" {
+  subnet_id      = aws_subnet.monitoring_private_2.id
+  route_table_id = aws_route_table.monitoring_private.id
+}
