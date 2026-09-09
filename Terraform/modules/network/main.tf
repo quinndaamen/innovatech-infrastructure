@@ -1,3 +1,5 @@
+
+#VPC creations
 resource "aws_vpc" "compute" {
   cidr_block           = var.compute_vpc_cidr
   enable_dns_support   = true
@@ -32,6 +34,7 @@ resource "aws_vpc" "monitoring" {
 }
 
 
+# Subnet Creations
 resource "aws_subnet" "compute_public_1" {
     vpc_id          = aws_vpc.compute.id
     cidr_block      = "10.1.1.0/24"
@@ -124,7 +127,7 @@ resource "aws_subnet" "monitoring_private_2" {
   }
 }
 
-
+# Internet gateway creation
 
 resource "aws_internet_gateway" "compute" {
   vpc_id = aws_vpc.compute.id
@@ -135,6 +138,7 @@ resource "aws_internet_gateway" "compute" {
   }
 }
 
+#Route table and route for compute public
 
 resource "aws_route_table" "compute_public" {
   vpc_id = aws_vpc.compute.id
@@ -219,4 +223,105 @@ resource "aws_route_table_association" "monitoring_private_1" {
 resource "aws_route_table_association" "monitoring_private_2" {
   subnet_id      = aws_subnet.monitoring_private_2.id
   route_table_id = aws_route_table.monitoring_private.id
+}
+
+
+resource "aws_ec2_transit_gateway" "main" {
+  description = "${var.environment}-transit-gateway"
+
+  tags = {
+    Name        = "${var.environment}-transit-gateway"
+    Environment = var.environment
+  }
+}
+
+
+resource "aws_ec2_transit_gateway_vpc_attachment" "compute" {
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.compute.id
+
+  subnet_ids = [
+    aws_subnet.compute_private_1.id,
+    aws_subnet.compute_private_2.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-compute-tgw-attachment"
+    Environment = var.environment
+  }
+}
+
+
+resource "aws_ec2_transit_gateway_vpc_attachment" "database" {
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.database.id
+
+  subnet_ids = [
+    aws_subnet.database_private_1.id,
+    aws_subnet.database_private_2.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-database-tgw-attachment"
+    Environment = var.environment
+  }
+}
+
+
+resource "aws_ec2_transit_gateway_vpc_attachment" "monitoring" {
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.monitoring.id
+
+  subnet_ids = [
+    aws_subnet.monitoring_private_1.id,
+    aws_subnet.monitoring_private_2.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-monitoring-tgw-attachment"
+    Environment = var.environment
+  }
+}
+
+
+
+
+# routes trough TGW
+# Compute
+resource "aws_route" "compute_to_database" {
+  route_table_id         = aws_route_table.compute_private.id
+  destination_cidr_block = var.database_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+resource "aws_route" "compute_to_monitoring" {
+  route_table_id         = aws_route_table.compute_private.id
+  destination_cidr_block = var.monitoring_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+#Database
+resource "aws_route" "database_to_compute" {
+  route_table_id         = aws_route_table.database_private.id
+  destination_cidr_block = var.compute_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+resource "aws_route" "database_to_monitoring" {
+  route_table_id         = aws_route_table.database_private.id
+  destination_cidr_block = var.monitoring_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+#Monitoring
+resource "aws_route" "monitoring_to_compute" {
+  route_table_id         = aws_route_table.monitoring_private.id
+  destination_cidr_block = var.compute_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+resource "aws_route" "monitoring_to_database" {
+  route_table_id         = aws_route_table.monitoring_private.id
+  destination_cidr_block = var.database_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
 }
