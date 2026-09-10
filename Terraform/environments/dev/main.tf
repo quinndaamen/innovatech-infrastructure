@@ -18,3 +18,17 @@ module "compute" {
 
   private_subnet_ids = module.network.compute_private_subnet_ids
 }
+
+module "database" {
+  source = "../../modules/database"
+
+  environment        = "dev"
+  vpc_id             = module.network.database_vpc_id
+  private_subnet_ids = module.network.database_private_subnet_ids
+  allowed_web_subnet_cidrs = [
+    "10.1.11.0/24",
+    "10.1.12.0/24"
+  ]
+
+  master_password = var.database_master_password
+}

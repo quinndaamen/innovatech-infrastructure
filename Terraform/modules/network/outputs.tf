@@ -30,3 +30,11 @@ output "compute_private_subnet_ids" {
     aws_subnet.compute_private_2.id
   ]
 }
+
+output "database_private_subnet_ids" {
+  description = "IDs of the private Database VPC subnets"
+  value = [
+    aws_subnet.database_private_1.id,
+    aws_subnet.database_private_2.id
+  ]
+}
