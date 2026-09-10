@@ -325,3 +325,96 @@ resource "aws_route" "monitoring_to_database" {
   destination_cidr_block = var.database_vpc_cidr
   transit_gateway_id     = aws_ec2_transit_gateway.main.id
 }
+
+
+
+# Security group for VPC interface endpoints
+resource "aws_security_group" "compute_vpc_endpoints" {
+  name        = "${var.environment}-compute-vpc-endpoints-sg"
+  description = "Security group for VPC interface endpoints"
+  vpc_id      = aws_vpc.compute.id
+
+  ingress {
+    description = "Allow HTTPS from Compute VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.compute_vpc_cidr]
+  }
+
+  egress {
+    description = "Allow outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.environment}-compute-vpc-endpoints-sg"
+    Environment = var.environment
+  }
+}
+
+
+# ECR API interface endpoint
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = aws_vpc.compute.id
+  service_name        = "com.amazonaws.eu-central-1.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  subnet_ids = [
+    aws_subnet.compute_private_1.id,
+    aws_subnet.compute_private_2.id
+  ]
+
+  security_group_ids = [
+    aws_security_group.compute_vpc_endpoints.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-ecr-api-endpoint"
+    Environment = var.environment
+  }
+}
+
+
+# ECR Docker registry interface endpoint
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id              = aws_vpc.compute.id
+  service_name        = "com.amazonaws.eu-central-1.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  subnet_ids = [
+    aws_subnet.compute_private_1.id,
+    aws_subnet.compute_private_2.id
+  ]
+
+  security_group_ids = [
+    aws_security_group.compute_vpc_endpoints.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-ecr-dkr-endpoint"
+    Environment = var.environment
+  }
+}
+
+
+# S3 gateway endpoint for ECR image layers
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.compute.id
+  service_name      = "com.amazonaws.eu-central-1.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_route_table.compute_private.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-s3-endpoint"
+    Environment = var.environment
+  }
+}
