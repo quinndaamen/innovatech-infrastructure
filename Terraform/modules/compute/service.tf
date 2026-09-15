@@ -7,6 +7,10 @@ resource "aws_ecs_service" "app" {
 
   launch_type = "FARGATE"
 
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
   network_configuration {
     subnets = var.private_subnet_ids
 

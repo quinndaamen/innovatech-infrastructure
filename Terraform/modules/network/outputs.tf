@@ -38,3 +38,13 @@ output "database_private_subnet_ids" {
     aws_subnet.database_private_2.id
   ]
 }
+
+
+output "monitoring_private_subnet_ids" {
+  description = "IDs of the private Monitoring VPC subnets"
+  value = [
+    aws_subnet.monitoring_private_1.id,
+    aws_subnet.monitoring_private_2.id
+  ]
+}
+

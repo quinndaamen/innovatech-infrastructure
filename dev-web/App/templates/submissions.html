@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Submissions - Innovatech</title>
+
+    <style>
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fa;
+            color: #17202a;
+        }
+
+        header {
+            background: #111827;
+            padding: 20px;
+        }
+
+        header a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .content {
+            margin-top: 60px;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #f8fafc;
+        }
+
+        .empty {
+            margin-top: 30px;
+            color: #64748b;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <a href="/">
+        Home
+    </a>
+
+    <a href="/form">
+        Contact
+    </a>
+
+    <a href="/submissions">
+        Submissions
+    </a>
+
+</header>
+
+
+<div class="container">
+
+    <div class="content">
+
+        <h1>
+            Database submissions
+        </h1>
+
+        <p>
+            Data retrieved from Aurora PostgreSQL.
+        </p>
+
+
+        {% if submissions %}
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        ID
+                    </th>
+
+                    <th>
+                        Name
+                    </th>
+
+                    <th>
+                        Email
+                    </th>
+
+                    <th>
+                        Message
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for submission in submissions %}
+
+                <tr>
+
+                    <td>
+                        {{ submission.id }}
+                    </td>
+
+                    <td>
+                        {{ submission.name }}
+                    </td>
+
+                    <td>
+                        {{ submission.email }}
+                    </td>
+
+                    <td>
+                        {{ submission.message }}
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+        {% else %}
+
+        <div class="empty">
+
+            No submissions have been stored yet.
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

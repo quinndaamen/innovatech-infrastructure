@@ -1,5 +1,5 @@
+# VPC creations
 
-#VPC creations
 resource "aws_vpc" "compute" {
   cidr_block           = var.compute_vpc_cidr
   enable_dns_support   = true
@@ -35,52 +35,50 @@ resource "aws_vpc" "monitoring" {
 
 
 # Subnet Creations
-resource "aws_subnet" "compute_public_1" {
-    vpc_id          = aws_vpc.compute.id
-    cidr_block      = "10.1.1.0/24"
-    availability_zone = data.aws_availability_zones.available.names[0]
 
-    tags = {
-        Name        = "${var.environment}-compute-public-1"
-        Environment = var.environment
-    }
+resource "aws_subnet" "compute_public_1" {
+  vpc_id            = aws_vpc.compute.id
+  cidr_block        = "10.1.1.0/24"
+  availability_zone = data.aws_availability_zones.available.names[0]
+
+  tags = {
+    Name        = "${var.environment}-compute-public-1"
+    Environment = var.environment
+  }
 }
 
 resource "aws_subnet" "compute_public_2" {
-    vpc_id          = aws_vpc.compute.id
-    cidr_block      = "10.1.2.0/24"
-    availability_zone = data.aws_availability_zones.available.names[1]
+  vpc_id            = aws_vpc.compute.id
+  cidr_block        = "10.1.2.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
 
-    tags = {
-        Name        = "${var.environment}-compute-public-2"
-        Environment = var.environment
-    }
+  tags = {
+    Name        = "${var.environment}-compute-public-2"
+    Environment = var.environment
+  }
 }
-
 
 resource "aws_subnet" "compute_private_1" {
-    vpc_id          = aws_vpc.compute.id
-    cidr_block      = "10.1.11.0/24"
-    availability_zone = data.aws_availability_zones.available.names[0]
+  vpc_id            = aws_vpc.compute.id
+  cidr_block        = "10.1.11.0/24"
+  availability_zone = data.aws_availability_zones.available.names[0]
 
-    tags = {
-        Name        = "${var.environment}-compute-private-1"
-        Environment = var.environment
-    }
+  tags = {
+    Name        = "${var.environment}-compute-private-1"
+    Environment = var.environment
+  }
 }
-
 
 resource "aws_subnet" "compute_private_2" {
-    vpc_id          = aws_vpc.compute.id
-    cidr_block      = "10.1.12.0/24"
-    availability_zone = data.aws_availability_zones.available.names[1]
+  vpc_id            = aws_vpc.compute.id
+  cidr_block        = "10.1.12.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
 
-    tags = {
-        Name        = "${var.environment}-compute-private-2"
-        Environment = var.environment
-    }
+  tags = {
+    Name        = "${var.environment}-compute-private-2"
+    Environment = var.environment
+  }
 }
-
 
 resource "aws_subnet" "database_private_1" {
   vpc_id            = aws_vpc.database.id
@@ -104,7 +102,6 @@ resource "aws_subnet" "database_private_2" {
   }
 }
 
-
 resource "aws_subnet" "monitoring_private_1" {
   vpc_id            = aws_vpc.monitoring.id
   cidr_block        = "10.3.1.0/24"
@@ -127,6 +124,7 @@ resource "aws_subnet" "monitoring_private_2" {
   }
 }
 
+
 # Internet gateway creation
 
 resource "aws_internet_gateway" "compute" {
@@ -138,7 +136,8 @@ resource "aws_internet_gateway" "compute" {
   }
 }
 
-#Route table and route for compute public
+
+# Route table and route for compute public
 
 resource "aws_route_table" "compute_public" {
   vpc_id = aws_vpc.compute.id
@@ -226,6 +225,8 @@ resource "aws_route_table_association" "monitoring_private_2" {
 }
 
 
+# Transit Gateway
+
 resource "aws_ec2_transit_gateway" "main" {
   description = "${var.environment}-transit-gateway"
 
@@ -251,7 +252,6 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "compute" {
   }
 }
 
-
 resource "aws_ec2_transit_gateway_vpc_attachment" "database" {
   transit_gateway_id = aws_ec2_transit_gateway.main.id
   vpc_id             = aws_vpc.database.id
@@ -266,7 +266,6 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "database" {
     Environment = var.environment
   }
 }
-
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "monitoring" {
   transit_gateway_id = aws_ec2_transit_gateway.main.id
@@ -284,10 +283,10 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "monitoring" {
 }
 
 
+# Routes through TGW
 
-
-# routes trough TGW
 # Compute
+
 resource "aws_route" "compute_to_database" {
   route_table_id         = aws_route_table.compute_private.id
   destination_cidr_block = var.database_vpc_cidr
@@ -300,7 +299,9 @@ resource "aws_route" "compute_to_monitoring" {
   transit_gateway_id     = aws_ec2_transit_gateway.main.id
 }
 
-#Database
+
+# Database
+
 resource "aws_route" "database_to_compute" {
   route_table_id         = aws_route_table.database_private.id
   destination_cidr_block = var.compute_vpc_cidr
@@ -313,7 +314,9 @@ resource "aws_route" "database_to_monitoring" {
   transit_gateway_id     = aws_ec2_transit_gateway.main.id
 }
 
-#Monitoring
+
+# Monitoring
+
 resource "aws_route" "monitoring_to_compute" {
   route_table_id         = aws_route_table.monitoring_private.id
   destination_cidr_block = var.compute_vpc_cidr
@@ -327,8 +330,8 @@ resource "aws_route" "monitoring_to_database" {
 }
 
 
+# Security group for Compute VPC interface endpoints
 
-# Security group for VPC interface endpoints
 resource "aws_security_group" "compute_vpc_endpoints" {
   name        = "${var.environment}-compute-vpc-endpoints-sg"
   description = "Security group for VPC interface endpoints"
@@ -358,6 +361,7 @@ resource "aws_security_group" "compute_vpc_endpoints" {
 
 
 # ECR API interface endpoint
+
 resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = aws_vpc.compute.id
   service_name        = "com.amazonaws.eu-central-1.ecr.api"
@@ -381,6 +385,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
 
 
 # ECR Docker registry interface endpoint
+
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = aws_vpc.compute.id
   service_name        = "com.amazonaws.eu-central-1.ecr.dkr"
@@ -404,6 +409,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
 
 
 # S3 gateway endpoint for ECR image layers
+
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.compute.id
   service_name      = "com.amazonaws.eu-central-1.s3"
@@ -415,6 +421,108 @@ resource "aws_vpc_endpoint" "s3" {
 
   tags = {
     Name        = "${var.environment}-s3-endpoint"
+    Environment = var.environment
+  }
+}
+
+
+# Security group for Monitoring VPC interface endpoints
+
+resource "aws_security_group" "monitoring_vpc_endpoints" {
+  name        = "${var.environment}-monitoring-vpc-endpoints-sg"
+  description = "Security group for SSM VPC interface endpoints"
+  vpc_id      = aws_vpc.monitoring.id
+
+  ingress {
+    description = "Allow HTTPS from Monitoring VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.monitoring_vpc_cidr]
+  }
+
+  egress {
+    description = "Allow outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.environment}-monitoring-vpc-endpoints-sg"
+    Environment = var.environment
+  }
+}
+
+
+# AWS Systems Manager endpoint
+
+resource "aws_vpc_endpoint" "monitoring_ssm" {
+  vpc_id              = aws_vpc.monitoring.id
+  service_name        = "com.amazonaws.eu-central-1.ssm"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  subnet_ids = [
+    aws_subnet.monitoring_private_1.id,
+    aws_subnet.monitoring_private_2.id
+  ]
+
+  security_group_ids = [
+    aws_security_group.monitoring_vpc_endpoints.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-monitoring-ssm-endpoint"
+    Environment = var.environment
+  }
+}
+
+
+# AWS Systems Manager Messages endpoint
+
+resource "aws_vpc_endpoint" "monitoring_ssmmessages" {
+  vpc_id              = aws_vpc.monitoring.id
+  service_name        = "com.amazonaws.eu-central-1.ssmmessages"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  subnet_ids = [
+    aws_subnet.monitoring_private_1.id,
+    aws_subnet.monitoring_private_2.id
+  ]
+
+  security_group_ids = [
+    aws_security_group.monitoring_vpc_endpoints.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-monitoring-ssmmessages-endpoint"
+    Environment = var.environment
+  }
+}
+
+
+# EC2 Messages endpoint
+
+resource "aws_vpc_endpoint" "monitoring_ec2messages" {
+  vpc_id              = aws_vpc.monitoring.id
+  service_name        = "com.amazonaws.eu-central-1.ec2messages"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  subnet_ids = [
+    aws_subnet.monitoring_private_1.id,
+    aws_subnet.monitoring_private_2.id
+  ]
+
+  security_group_ids = [
+    aws_security_group.monitoring_vpc_endpoints.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-monitoring-ec2messages-endpoint"
     Environment = var.environment
   }
 }

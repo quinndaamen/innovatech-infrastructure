@@ -32,3 +32,13 @@ module "database" {
 
   master_password = var.database_master_password
 }
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  environment       = "dev"
+  vpc_id            = module.network.monitoring_vpc_id
+  private_subnet_id = module.network.monitoring_private_subnet_ids[0]
+
+  instance_type = "t3.small"
+}
