@@ -18,10 +18,11 @@ module "compute" {
 
   private_subnet_ids = module.network.compute_private_subnet_ids
 
-  database_endpoint = module.database.aurora_endpoint
-  database_port     = module.database.aurora_port
-  database_name     = module.database.database_name
-  database_username = module.database.database_username
+  database_endpoint   = module.database.aurora_endpoint
+  database_port       = module.database.aurora_port
+  database_name       = module.database.database_name
+  database_username   = module.database.database_username
+  database_secret_arn = module.database.database_secret_arn
 }
 
 module "database" {

@@ -426,6 +426,29 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 
+# Secrets Manager interface endpoint for ECS tasks
+resource "aws_vpc_endpoint" "secretsmanager" {
+  vpc_id              = aws_vpc.compute.id
+  service_name        = "com.amazonaws.eu-central-1.secretsmanager"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  subnet_ids = [
+    aws_subnet.compute_private_1.id,
+    aws_subnet.compute_private_2.id
+  ]
+
+  security_group_ids = [
+    aws_security_group.compute_vpc_endpoints.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-secretsmanager-endpoint"
+    Environment = var.environment
+  }
+}
+
+
 # S3 gateway endpoint for Monitoring VPC
 resource "aws_vpc_endpoint" "monitoring_s3" {
   vpc_id            = aws_vpc.monitoring.id

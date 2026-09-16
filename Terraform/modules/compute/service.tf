@@ -22,10 +22,10 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.app.arn
-    container_name   = "web"
-    container_port   = 80
-  }
+  target_group_arn = aws_lb_target_group.app.arn
+  container_name   = "nginx"
+  container_port   = 80
+}
 
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200

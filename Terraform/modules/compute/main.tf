@@ -139,8 +139,8 @@ resource "aws_ecs_task_definition" "app" {
 
   container_definitions = jsonencode([
     {
-      name      = "web"
-      image     = "${aws_ecr_repository.app.repository_url}:latest"
+      name      = "nginx"
+      image     = "639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-nginx:latest"
       essential = true
 
       portMappings = [
@@ -148,6 +148,45 @@ resource "aws_ecs_task_definition" "app" {
           containerPort = 80
           hostPort      = 80
           protocol      = "tcp"
+        }
+      ]
+    },
+    {
+      name      = "web"
+      image     = "639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-web:latest"
+      essential = true
+
+      portMappings = [
+        {
+          containerPort = 8000
+          hostPort      = 8000
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "DB_HOST"
+          value = var.database_endpoint
+        },
+        {
+          name  = "DB_PORT"
+          value = tostring(var.database_port)
+        },
+        {
+          name  = "DB_NAME"
+          value = var.database_name
+        },
+        {
+          name  = "DB_USER"
+          value = var.database_username
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${var.database_secret_arn}:password::"
         }
       ]
     }
@@ -184,7 +223,26 @@ resource "aws_iam_role" "ecs_task_execution" {
   }
 }
 
+resource "aws_iam_role_policy" "ecs_secrets" {
+  name = "${var.environment}-ecs-secrets-policy"
+  role = aws_iam_role.ecs_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = var.database_secret_arn
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   role       = aws_iam_role.ecs_task_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
+

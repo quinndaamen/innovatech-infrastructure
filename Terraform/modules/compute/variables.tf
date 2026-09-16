@@ -37,3 +37,7 @@ variable "database_username" {
   description = "Aurora database username"
   type        = string
 }
+variable "database_secret_arn" {
+  description = "ARN of the database credentials secret"
+  type        = string
+}
