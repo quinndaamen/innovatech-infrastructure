@@ -17,6 +17,11 @@ module "compute" {
   public_subnet_ids = module.network.compute_public_subnet_ids
 
   private_subnet_ids = module.network.compute_private_subnet_ids
+
+  database_endpoint = module.database.aurora_endpoint
+  database_port     = module.database.aurora_port
+  database_name     = module.database.database_name
+  database_username = module.database.database_username
 }
 
 module "database" {
@@ -25,6 +30,7 @@ module "database" {
   environment        = "dev"
   vpc_id             = module.network.database_vpc_id
   private_subnet_ids = module.network.database_private_subnet_ids
+
   allowed_web_subnet_cidrs = [
     "10.1.11.0/24",
     "10.1.12.0/24"

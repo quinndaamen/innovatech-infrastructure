@@ -17,3 +17,23 @@ variable "private_subnet_ids" {
   description = "Private subnet IDs for ECS tasks"
   type        = list(string)
 }
+
+variable "database_endpoint" {
+  description = "Aurora PostgreSQL endpoint"
+  type        = string
+}
+
+variable "database_port" {
+  description = "Aurora PostgreSQL port"
+  type        = number
+}
+
+variable "database_name" {
+  description = "Application database name"
+  type        = string
+}
+
+variable "database_username" {
+  description = "Aurora database username"
+  type        = string
+}

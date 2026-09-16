@@ -1,11 +1,3 @@
-# ============================================================
-# Monitoring EC2
-# ============================================================
-
-# ------------------------------------------------------------
-# Amazon Linux 2023 AMI
-# ------------------------------------------------------------
-
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
@@ -31,10 +23,6 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-
-# ============================================================
-# Security Group
-# ============================================================
 
 resource "aws_security_group" "monitoring" {
   name        = "${var.environment}-monitoring-sg"
@@ -72,9 +60,6 @@ resource "aws_security_group" "monitoring" {
 }
 
 
-# ============================================================
-# IAM Role
-# ============================================================
 
 resource "aws_iam_role" "monitoring" {
   name = "${var.environment}-monitoring-role"
@@ -102,9 +87,6 @@ resource "aws_iam_role" "monitoring" {
 }
 
 
-# ============================================================
-# SSM Policy
-# ============================================================
 
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.monitoring.name
@@ -112,9 +94,6 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 }
 
 
-# ============================================================
-# Instance Profile
-# ============================================================
 
 resource "aws_iam_instance_profile" "monitoring" {
   name = "${var.environment}-monitoring-profile"
@@ -123,13 +102,8 @@ resource "aws_iam_instance_profile" "monitoring" {
 }
 
 
-# ============================================================
-# Monitoring EC2
-# ============================================================
-
 resource "aws_instance" "monitoring" {
-  ami = data.aws_ami.amazon_linux.id
-
+  ami           = data.aws_ami.amazon_linux.id
   instance_type = var.instance_type
 
   subnet_id = var.private_subnet_id
@@ -138,27 +112,14 @@ resource "aws_instance" "monitoring" {
     aws_security_group.monitoring.id
   ]
 
-  # ----------------------------------------------------------
-  # No public IP
-  # ----------------------------------------------------------
-
   associate_public_ip_address = false
-
-  # ----------------------------------------------------------
-  # IAM permissions for SSM
-  # ----------------------------------------------------------
 
   iam_instance_profile = aws_iam_instance_profile.monitoring.name
 
-  # ----------------------------------------------------------
-  # User data
-  #
-  # AL2023 normally includes the SSM Agent.
-  # We simply enable and start it.
-  # ----------------------------------------------------------
-
   user_data = <<-EOF
     #!/bin/bash
+
+    dnf install -y amazon-ssm-agent
 
     systemctl enable amazon-ssm-agent
     systemctl start amazon-ssm-agent

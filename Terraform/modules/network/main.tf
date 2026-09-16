@@ -426,6 +426,23 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 
+# S3 gateway endpoint for Monitoring VPC
+resource "aws_vpc_endpoint" "monitoring_s3" {
+  vpc_id            = aws_vpc.monitoring.id
+  service_name      = "com.amazonaws.eu-central-1.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_route_table.monitoring_private.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-monitoring-s3-endpoint"
+    Environment = var.environment
+  }
+}
+
+
 # Security group for Monitoring VPC interface endpoints
 
 resource "aws_security_group" "monitoring_vpc_endpoints" {

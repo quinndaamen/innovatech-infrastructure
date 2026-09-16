@@ -42,6 +42,15 @@ database_url = URL.create(
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+    "connect_args": {
+        "connect_timeout": 5
+    }
+}
+
+
 db = SQLAlchemy(app)
 
 

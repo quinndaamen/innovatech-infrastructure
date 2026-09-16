@@ -60,10 +60,10 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip"
 
   health_check {
-    enabled             = true
-    path                = "/"
-    protocol            = "HTTP"
-    matcher             = "200"
+    enabled  = true
+    path     = "/"
+    protocol = "HTTP"
+    matcher  = "200"
 
     interval            = 30
     timeout             = 5
@@ -140,7 +140,7 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([
     {
       name      = "web"
-      image = "${aws_ecr_repository.app.repository_url}:latest"
+      image     = "${aws_ecr_repository.app.repository_url}:latest"
       essential = true
 
       portMappings = [
