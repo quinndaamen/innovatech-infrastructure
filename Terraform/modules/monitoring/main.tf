@@ -93,6 +93,26 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy" "prometheus_s3" {
+  name = "${var.environment}-prometheus-s3"
+  role = aws_iam_role.monitoring.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "s3:GetObject"
+        ]
+
+        Resource = "${aws_s3_bucket.prometheus.arn}/*"
+      }
+    ]
+  })
+}
 
 
 resource "aws_iam_instance_profile" "monitoring" {
@@ -101,12 +121,28 @@ resource "aws_iam_instance_profile" "monitoring" {
   role = aws_iam_role.monitoring.name
 }
 
+resource "aws_s3_bucket" "prometheus" {
+  bucket = "${var.environment}-prometheus-artifact"
+
+  tags = {
+    Name        = "${var.environment}-prometheus-artifact"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_object" "prometheus" {
+  bucket = aws_s3_bucket.prometheus.id
+  key    = "prometheus-3.5.0.linux-amd64.tar.gz"
+  source = "${path.module}/files/prometheus-3.5.0.linux-amd64.tar.gz"
+
+  etag = filemd5("${path.module}/files/prometheus-3.5.0.linux-amd64.tar.gz")
+}
+
 
 resource "aws_instance" "monitoring" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = var.instance_type
-
-  subnet_id = var.private_subnet_id
+  subnet_id     = var.private_subnet_id
 
   vpc_security_group_ids = [
     aws_security_group.monitoring.id
@@ -116,13 +152,91 @@ resource "aws_instance" "monitoring" {
 
   iam_instance_profile = aws_iam_instance_profile.monitoring.name
 
+  user_data_replace_on_change = true
+
   user_data = <<-EOF
     #!/bin/bash
 
-    dnf install -y amazon-ssm-agent
+    set -e
 
+    # Update system
+    dnf update -y
+
+    # Install required packages
+    dnf install -y wget tar awscli
+
+    # Ensure SSM Agent is running
+    dnf install -y amazon-ssm-agent
     systemctl enable amazon-ssm-agent
     systemctl start amazon-ssm-agent
+
+    # Create Prometheus user
+    useradd --no-create-home --shell /sbin/nologin prometheus || true
+
+    # Create Prometheus directories
+    mkdir -p /etc/prometheus
+    mkdir -p /var/lib/prometheus
+
+    # Download Prometheus from the private S3 endpoint
+    cd /tmp
+
+    aws s3 cp \
+    s3://${aws_s3_bucket.prometheus.id}/prometheus-${var.prometheus_version}.linux-amd64.tar.gz \
+    prometheus-${var.prometheus_version}.linux-amd64.tar.gz
+
+    tar -xzf prometheus-${var.prometheus_version}.linux-amd64.tar.gz
+
+    cd prometheus-${var.prometheus_version}.linux-amd64
+
+    # Install Prometheus binaries
+    cp prometheus /usr/local/bin/prometheus
+    cp promtool /usr/local/bin/promtool
+
+    # Install Prometheus configuration
+    cat > /etc/prometheus/prometheus.yml <<'PROMETHEUS_CONFIG'
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: "prometheus"
+        static_configs:
+          - targets:
+              - "localhost:9090"
+    PROMETHEUS_CONFIG
+
+    # Set permissions
+    chown prometheus:prometheus /usr/local/bin/prometheus
+    chown prometheus:prometheus /usr/local/bin/promtool
+    chown -R prometheus:prometheus /etc/prometheus
+    chown -R prometheus:prometheus /var/lib/prometheus
+
+    # Create systemd service
+    cat > /etc/systemd/system/prometheus.service <<'SERVICE'
+    [Unit]
+    Description=Prometheus Monitoring
+    Wants=network-online.target
+    After=network-online.target
+
+    [Service]
+    User=prometheus
+    Group=prometheus
+    Type=simple
+
+    ExecStart=/usr/local/bin/prometheus \
+      --config.file=/etc/prometheus/prometheus.yml \
+      --storage.tsdb.path=/var/lib/prometheus
+
+    Restart=on-failure
+
+    [Install]
+    WantedBy=multi-user.target
+    SERVICE
+
+    # Start Prometheus
+    systemctl daemon-reload
+    systemctl enable prometheus
+    systemctl start prometheus
   EOF
 
   tags = {

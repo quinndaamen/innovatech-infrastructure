@@ -18,3 +18,9 @@ variable "instance_type" {
   type        = string
   default     = "t3.small"
 }
+
+variable "prometheus_version" {
+  description = "Prometheus version"
+  type        = string
+  default     = "3.5.0"
+}
