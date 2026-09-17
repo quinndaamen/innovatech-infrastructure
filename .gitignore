@@ -5,3 +5,5 @@
 *.tfvars.json
 crash.log
 crash.*.log
+
+prometheus-3.5.0.linux-amd64.tar.gz
