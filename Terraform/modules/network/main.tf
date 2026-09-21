@@ -566,3 +566,24 @@ resource "aws_vpc_endpoint" "monitoring_ec2messages" {
     Environment = var.environment
   }
 }
+
+resource "aws_vpc_endpoint" "monitoring_cloudwatch" {
+  vpc_id              = aws_vpc.monitoring.id
+  service_name        = "com.amazonaws.eu-central-1.monitoring"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  subnet_ids = [
+    aws_subnet.monitoring_private_1.id,
+    aws_subnet.monitoring_private_2.id
+  ]
+
+  security_group_ids = [
+    aws_security_group.monitoring_vpc_endpoints.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-monitoring-cloudwatch"
+    Environment = var.environment
+  }
+}

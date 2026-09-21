@@ -24,3 +24,9 @@ variable "prometheus_version" {
   type        = string
   default     = "3.5.0"
 }
+
+variable "grafana_version" {
+  description = "Grafana version"
+  type        = string
+  default     = "13.2.2"
+}

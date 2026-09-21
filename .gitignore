@@ -7,3 +7,5 @@ crash.log
 crash.*.log
 
 prometheus-3.5.0.linux-amd64.tar.gz
+
+grafana_13.2.2_34846740809_linux_amd64.tar.gz
