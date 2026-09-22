@@ -34,3 +34,49 @@ jobs:
         run: |
           docker push \
             639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-web:${{ github.sha }}
+
+      - name: Download current ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition dev-web \
+            --query taskDefinition \
+            --output json > task-definition.json
+
+      - name: Update application image
+        run: |
+          jq --arg IMAGE \
+            "639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-web:${{ github.sha }}" \
+            '.containerDefinitions |= map(
+              if .name == "web"
+              then .image = $IMAGE
+              else .
+              end
+            ) |
+            del(
+              .taskDefinitionArn,
+              .revision,
+              .status,
+              .requiresAttributes,
+              .compatibilities,
+              .registeredAt,
+              .registeredBy
+            )' \
+            task-definition.json > new-task-definition.json
+
+      - name: Register new ECS task definition
+        run: |
+          aws ecs register-task-definition \
+            --cli-input-json file://new-task-definition.json
+
+      - name: Deploy new task definition
+        run: |
+          TASK_DEFINITION=$(aws ecs describe-task-definition \
+            --task-definition dev-web \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          aws ecs update-service \
+            --cluster dev-cluster \
+            --service dev-web-service \
+            --task-definition "$TASK_DEFINITION" \
+            --region eu-central-1
