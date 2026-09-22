@@ -15,10 +15,10 @@ jobs:
 
       - name: Build application image
         working-directory: dev-web/App
-        run: docker build -t innovatech-web:latest .
+        run: docker build -t innovatech-web:${{ github.sha }} .
 
       - name: Verify application image
-        run: docker image inspect innovatech-web:latest
+        run: docker image inspect innovatech-web:${{ github.sha }}
 
       - name: Login to Amazon ECR
         run: |
@@ -27,8 +27,10 @@ jobs:
 
       - name: Tag application image
         run: |
-          docker tag innovatech-web:latest 639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-web:latest
+          docker tag innovatech-web:${{ github.sha }} \
+            639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-web:${{ github.sha }}
 
       - name: Push application image
         run: |
-          docker push 639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-web:latest
+          docker push \
+            639962671417.dkr.ecr.eu-central-1.amazonaws.com/innovatech-web:${{ github.sha }}
