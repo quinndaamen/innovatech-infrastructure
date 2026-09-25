@@ -39,7 +39,7 @@ More things I implemented were:
 - A private network with only the Load Balancer and the GitHub runner on public subnets.
 - Rolling updates of the web server code using a GitHub runner, GitHub Actions and ECR.
 - A monitoring solution on a separate isolated EC2 instance running Prometheus and Grafana.
-- A private Aurora PostgreSQL database.
+- A private Aurora PostgreSQL database accesible only to the webapp using Secrets manager.
 - VPC separation between Compute, Database and Monitoring.
 - Transit Gateway connectivity between the VPCs.
 - VPC endpoints to allow private services to communicate with AWS services without direct internet access.
