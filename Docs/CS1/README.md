@@ -2,7 +2,7 @@
 
 This document provides an overview of the infrastructure I designed and implemented for Case Study 1 of the Innovatech Solutions project.
 
-![Business Context](.../Images/businesscontext.png)   
+![Business Context](Images/businesscontext.png)   
 
 The main goal of this case study was to create infrastructure that is scalable, secure, monitored, and automated using Infrastructure as Code (IaC) and DevOps practices.
 
@@ -11,7 +11,7 @@ The main goal of this case study was to create infrastructure that is scalable, 
 The final infrastructure was built in AWS Frankfurt (`eu-central-1`).
 
 
-![Network Diagram](.../Images/networkdiagram.png)   
+![Network Diagram](Images/networkdiagram.png)   
 
 
 The infrastructure is separated into three VPCs:
@@ -148,6 +148,8 @@ I used:
 - Amazon ECR
 - Amazon ECS
 
+![CI/CD](Images/cicdpipeline.png)   
+
 The self-hosted runner is an EC2 instance in the public Compute subnet. It does not accept inbound access and is managed using AWS Systems Manager.
 
 The deployment process is:
@@ -187,7 +189,7 @@ The Grafana dashboard displays infrastructure information including:
 I also configured a Grafana CPU alert for the ECS service.
 
 
-![Monitoring Dashboard](.../Images/monitoringdashboard.png)   
+![Monitoring Dashboard](Images/monitoringdashboard.png)   
 
 During testing, I generated traffic and successfully received the configured email alert.
 
@@ -232,7 +234,7 @@ The main partial result was the ECS autoscaling test because I could not generat
 
 More detailed testing is documented in my school portfolio.
 
-![test plan](.../Images/testplanoutcomes.png)  
+![test plan](Images/testplanoutcomes.png)  
 
 ## Problems Encountered
 
