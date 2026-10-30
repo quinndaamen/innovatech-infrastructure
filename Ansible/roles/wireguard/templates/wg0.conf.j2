@@ -1,0 +1,8 @@
+[Interface]
+Address = {{ wireguard_server_address }}
+ListenPort = {{ wireguard_port }}
+PrivateKey = {{ wireguard_private_key_file.content | b64decode | trim }}
+
+[Peer]
+PublicKey = Qi3M51Ser5+yvUuqLCv6tFqAEk2CUVKXVNpBWDiZBCE=
+AllowedIPs = 10.200.0.2/32, 10.4.1.0/24

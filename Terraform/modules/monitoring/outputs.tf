@@ -1,14 +1,34 @@
-output "monitoring_instance_id" {
-  description = "ID of the monitoring EC2 instance"
-  value       = aws_instance.monitoring.id
+output "elasticsearch_instance_id" {
+  description = "EC2 instance ID for Elasticsearch"
+  value       = aws_instance.elasticsearch.id
 }
 
-output "monitoring_private_ip" {
-  description = "Private IP address of the monitoring EC2 instance"
-  value       = aws_instance.monitoring.private_ip
+output "elasticsearch_private_ip" {
+  description = "Private IP address of Elasticsearch"
+  value       = aws_instance.elasticsearch.private_ip
 }
 
-output "monitoring_security_group_id" {
-  description = "Security group ID of the monitoring server"
-  value       = aws_security_group.monitoring.id
+output "logstash_instance_id" {
+  description = "EC2 instance ID for Logstash"
+  value       = aws_instance.logstash.id
+}
+
+output "logstash_private_ip" {
+  description = "Private IP address of Logstash"
+  value       = aws_instance.logstash.private_ip
+}
+
+output "kibana_instance_id" {
+  description = "EC2 instance ID for Kibana"
+  value       = aws_instance.kibana.id
+}
+
+output "kibana_private_ip" {
+  description = "Private IP address of Kibana"
+  value       = aws_instance.kibana.private_ip
+}
+
+output "elastic_packages_bucket_name" {
+  description = "S3 bucket containing Elastic Stack installation packages"
+  value       = aws_s3_bucket.elastic_packages.id
 }

@@ -4,15 +4,13 @@ This document provides an overview of the infrastructure I designed and implemen
 
 ![Business Context](Images/businesscontext.png)   
 
-The main goal of this case study was to create infrastructure that is scalable, secure, monitored, and automated using Infrastructure as Code (IaC) and DevOps practices.
+The main goal of this case study was to create infrastructure that is scalable, secure, monitored, and automated using Infrastructure as Code (IaC) and DevOps.
 
 ## Architecture
 
+![Network Diagram](Images/networkdiagram.png)  
+
 The final infrastructure was built in AWS Frankfurt (`eu-central-1`).
-
-
-![Network Diagram](Images/networkdiagram.png)   
-
 
 The infrastructure is separated into three VPCs:
 
@@ -188,10 +186,10 @@ The Grafana dashboard displays infrastructure information including:
 
 I also configured a Grafana CPU alert for the ECS service.
 
+During testing, I generated traffic and successfully received the configured email alert.
 
 ![Monitoring Dashboard](Images/monitoringdashboard.png)   
 
-During testing, I generated traffic and successfully received the configured email alert.
 
 ## Network Security
 

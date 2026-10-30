@@ -41,11 +41,20 @@ module "database" {
 }
 
 module "monitoring" {
-  source = "../../modules/monitoring"
+  source      = "../../modules/monitoring"
+  environment = "dev"
 
-  environment       = "dev"
-  vpc_id            = module.network.monitoring_vpc_id
-  private_subnet_id = module.network.monitoring_private_subnet_ids[0]
+  vpc_id = module.network.monitoring_vpc_id
 
-  instance_type = "t3.small"
+  private_subnet_ids = module.network.monitoring_private_subnet_ids
+
+  elasticsearch_instance_type = "t3.medium"
+  logstash_instance_type      = "t3.small"
+  kibana_instance_type        = "t3.small"
+
+  elasticsearch_volume_size = 50
+  logstash_volume_size      = 20
+  kibana_volume_size        = 20
+
+  elastic_version = "9.5.5"
 }

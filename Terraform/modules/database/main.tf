@@ -39,8 +39,8 @@ resource "aws_db_subnet_group" "aurora" {
 resource "aws_rds_cluster" "aurora" {
   cluster_identifier = "${var.environment}-aurora-cluster"
 
-  engine         = "aurora-postgresql"
-  database_name  = var.database_name
+  engine          = "aurora-postgresql"
+  database_name   = var.database_name
   master_username = var.master_username
   master_password = var.master_password
 
@@ -66,10 +66,10 @@ resource "aws_rds_cluster" "aurora" {
 
 resource "aws_rds_cluster_instance" "aurora" {
   identifier         = "${var.environment}-aurora-instance-1"
-  cluster_identifier  = aws_rds_cluster.aurora.id
+  cluster_identifier = aws_rds_cluster.aurora.id
   instance_class     = "db.t3.medium"
-  engine              = aws_rds_cluster.aurora.engine
-  engine_version      = aws_rds_cluster.aurora.engine_version
+  engine             = aws_rds_cluster.aurora.engine
+  engine_version     = aws_rds_cluster.aurora.engine_version
 
   publicly_accessible = false
 

@@ -1,0 +1,21 @@
+---
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install WireGuard and required utilities
+  ansible.builtin.apt:
+    name:
+      - wireguard
+      - wireguard-tools
+      - iptables
+    state: present
+
+- name: Ensure WireGuard configuration directory exists
+  ansible.builtin.file:
+    path: "{{ wireguard_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"

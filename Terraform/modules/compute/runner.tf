@@ -28,61 +28,61 @@ resource "aws_iam_role_policy" "github_runner" {
   role = aws_iam_role.github_runner.id
 
   policy = jsonencode({
-  Version = "2012-10-17"
+    Version = "2012-10-17"
 
-  Statement = [
-    {
-      Effect = "Allow"
+    Statement = [
+      {
+        Effect = "Allow"
 
-      Action = [
-        "ecr:GetAuthorizationToken"
-      ]
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
 
-      Resource = "*"
-    },
+        Resource = "*"
+      },
 
-    {
-      Effect = "Allow"
+      {
+        Effect = "Allow"
 
-      Action = [
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:CompleteLayerUpload",
-        "ecr:InitiateLayerUpload",
-        "ecr:PutImage",
-        "ecr:UploadLayerPart"
-      ]
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:CompleteLayerUpload",
+          "ecr:InitiateLayerUpload",
+          "ecr:PutImage",
+          "ecr:UploadLayerPart"
+        ]
 
-      Resource = "*"
-    },
+        Resource = "*"
+      },
 
-    {
-      Effect = "Allow"
+      {
+        Effect = "Allow"
 
-      Action = [
-        "ecs:DescribeServices",
-        "ecs:DescribeTaskDefinition",
-        "ecs:DescribeTasks",
-        "ecs:ListTasks",
-        "ecs:RegisterTaskDefinition",
-        "ecs:UpdateService"
-      ]
+        Action = [
+          "ecs:DescribeServices",
+          "ecs:DescribeTaskDefinition",
+          "ecs:DescribeTasks",
+          "ecs:ListTasks",
+          "ecs:RegisterTaskDefinition",
+          "ecs:UpdateService"
+        ]
 
-      Resource = "*"
-    },
+        Resource = "*"
+      },
 
-    {
-      Effect = "Allow"
+      {
+        Effect = "Allow"
 
-      Action = [
-        "iam:PassRole"
-      ]
+        Action = [
+          "iam:PassRole"
+        ]
 
-      Resource = aws_iam_role.ecs_task_execution.arn
-    }
-  ]
-})
-  
-  
+        Resource = aws_iam_role.ecs_task_execution.arn
+      }
+    ]
+  })
+
+
 }
 
 resource "aws_iam_role_policy_attachment" "github_runner_ssm" {

@@ -1,0 +1,61 @@
+---
+- name: Check whether the WireGuard server private key exists
+  ansible.builtin.stat:
+    path: "{{ wireguard_config_dir }}/server_private.key"
+  register: wireguard_private_key_stat
+
+- name: Generate WireGuard server private key if missing
+  ansible.builtin.command:
+    cmd: wg genkey
+  register: wireguard_generated_private_key
+  changed_when: true
+  no_log: true
+  when: not wireguard_private_key_stat.stat.exists
+
+- name: Save WireGuard server private key
+  ansible.builtin.copy:
+    content: "{{ wireguard_generated_private_key.stdout }}\n"
+    dest: "{{ wireguard_config_dir }}/server_private.key"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when:
+    - wireguard_generated_private_key is not skipped
+    - wireguard_generated_private_key.stdout is defined
+
+- name: Read WireGuard server private key
+  ansible.builtin.slurp:
+    src: "{{ wireguard_config_dir }}/server_private.key"
+  register: wireguard_private_key_file
+  no_log: true
+
+- name: Enable IPv4 forwarding
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-wireguard.conf
+    content: |
+      net.ipv4.ip_forward=1
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Apply IPv4 forwarding setting
+  ansible.builtin.command:
+    cmd: sysctl -w net.ipv4.ip_forward=1
+  changed_when: false
+
+- name: Configure WireGuard interface
+  ansible.builtin.template:
+    src: wg0.conf.j2
+    dest: "{{ wireguard_config_dir }}/{{ wireguard_interface }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart WireGuard
+
+- name: Enable and start WireGuard
+  ansible.builtin.systemd:
+    name: "{{ wireguard_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true

@@ -6,6 +6,33 @@
 crash.log
 crash.*.log
 
-prometheus-3.5.0.linux-amd64.tar.gz
+*.tar.gz
 
-grafana_13.2.2_34846740809_linux_amd64.tar.gz
+# SSH private keys
+*.pem
+id_rsa
+id_ed25519
+
+# Environment files
+.env
+*.env
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+
+# Credentials
+credentials
+secrets/
+
+# Terraform generated files
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+.terraform/
+
+# Terraform backups
+terraform-state-backup.json
