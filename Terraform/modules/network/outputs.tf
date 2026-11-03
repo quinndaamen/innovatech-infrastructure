@@ -48,3 +48,20 @@ output "monitoring_private_subnet_ids" {
   ]
 }
 
+output "onprem_vpc_id" {
+  description = "ID of the simulated on-premises VPC"
+  value       = aws_vpc.onprem.id
+}
+
+output "onprem_private_subnet_ids" {
+  description = "IDs of the private on-premises subnets"
+  value = [
+    aws_subnet.onprem_private_1.id,
+    aws_subnet.onprem_private_2.id
+  ]
+}
+
+output "onprem_public_subnet_id" {
+  description = "Public subnet ID for the simulated on-premises server"
+  value       = aws_subnet.onprem_public.id
+}

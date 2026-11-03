@@ -5,8 +5,8 @@ module "network" {
   compute_vpc_cidr    = "10.1.0.0/16"
   database_vpc_cidr   = "10.2.0.0/16"
   monitoring_vpc_cidr = "10.3.0.0/16"
+  onprem_vpc_cidr     = "10.50.0.0/16"
 }
-
 module "compute" {
   source = "../../modules/compute"
 
@@ -57,4 +57,13 @@ module "monitoring" {
   kibana_volume_size        = 20
 
   elastic_version = "9.5.5"
+}
+
+module "onprem_sim" {
+  source = "../../modules/onprem-sim"
+
+  environment        = "dev"
+  vpc_id             = module.network.onprem_vpc_id
+  private_subnet_ids = module.network.onprem_private_subnet_ids
+  public_subnet_id   = module.network.onprem_public_subnet_id
 }

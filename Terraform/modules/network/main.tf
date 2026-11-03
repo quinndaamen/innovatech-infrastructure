@@ -1,5 +1,16 @@
 # VPC creations
 
+resource "aws_vpc" "onprem" {
+  cidr_block           = var.onprem_vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name        = "${var.environment}-onprem-vpc"
+    Environment = var.environment
+  }
+}
+
 resource "aws_vpc" "compute" {
   cidr_block           = var.compute_vpc_cidr
   enable_dns_support   = true
@@ -125,6 +136,28 @@ resource "aws_subnet" "monitoring_private_2" {
 }
 
 
+resource "aws_subnet" "onprem_private_1" {
+  vpc_id            = aws_vpc.onprem.id
+  cidr_block        = "10.50.1.0/24"
+  availability_zone = data.aws_availability_zones.available.names[0]
+
+  tags = {
+    Name        = "${var.environment}-onprem-private-1"
+    Environment = var.environment
+  }
+}
+
+resource "aws_subnet" "onprem_private_2" {
+  vpc_id            = aws_vpc.onprem.id
+  cidr_block        = "10.50.2.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
+
+  tags = {
+    Name        = "${var.environment}-onprem-private-2"
+    Environment = var.environment
+  }
+}
+
 # Internet gateway creation
 
 resource "aws_internet_gateway" "compute" {
@@ -132,6 +165,16 @@ resource "aws_internet_gateway" "compute" {
 
   tags = {
     Name        = "${var.environment}-compute-igw"
+    Environment = var.environment
+  }
+}
+
+# Internet Gateway for On-premises VPC
+resource "aws_internet_gateway" "onprem" {
+  vpc_id = aws_vpc.onprem.id
+
+  tags = {
+    Name        = "${var.environment}-onprem-igw"
     Environment = var.environment
   }
 }
@@ -225,6 +268,38 @@ resource "aws_route_table_association" "monitoring_private_2" {
 }
 
 
+resource "aws_route_table" "onprem_private" {
+  vpc_id = aws_vpc.onprem.id
+
+  tags = {
+    Name        = "${var.environment}-onprem-private-rt"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route_table_association" "onprem_private_1" {
+  subnet_id      = aws_subnet.onprem_private_1.id
+  route_table_id = aws_route_table.onprem_private.id
+}
+
+resource "aws_route_table_association" "onprem_private_2" {
+  subnet_id      = aws_subnet.onprem_private_2.id
+  route_table_id = aws_route_table.onprem_private.id
+}
+
+# On-premises public subnet
+resource "aws_subnet" "onprem_public" {
+  vpc_id                  = aws_vpc.onprem.id
+  cidr_block              = "10.50.3.0/24"
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "${var.environment}-onprem-public"
+    Environment = var.environment
+  }
+}
+
 # Transit Gateway
 
 resource "aws_ec2_transit_gateway" "main" {
@@ -282,6 +357,20 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "monitoring" {
   }
 }
 
+resource "aws_ec2_transit_gateway_vpc_attachment" "onprem" {
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.onprem.id
+
+  subnet_ids = [
+    aws_subnet.onprem_private_1.id,
+    aws_subnet.onprem_private_2.id
+  ]
+
+  tags = {
+    Name        = "${var.environment}-onprem-tgw-attachment"
+    Environment = var.environment
+  }
+}
 
 # Routes through TGW
 
@@ -299,6 +388,19 @@ resource "aws_route" "compute_to_monitoring" {
   transit_gateway_id     = aws_ec2_transit_gateway.main.id
 }
 
+# On-premises to Monitoring
+
+resource "aws_route" "onprem_to_monitoring" {
+  route_table_id         = aws_route_table.onprem_private.id
+  destination_cidr_block = var.monitoring_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+resource "aws_route" "monitoring_to_onprem" {
+  route_table_id         = aws_route_table.monitoring_private.id
+  destination_cidr_block = var.onprem_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
 
 # Database
 
@@ -329,6 +431,36 @@ resource "aws_route" "monitoring_to_database" {
   transit_gateway_id     = aws_ec2_transit_gateway.main.id
 }
 
+
+# On-premises public route table
+resource "aws_route_table" "onprem_public" {
+  vpc_id = aws_vpc.onprem.id
+
+  tags = {
+    Name        = "${var.environment}-onprem-public-rt"
+    Environment = var.environment
+  }
+}
+
+# Internet route
+resource "aws_route" "onprem_public_internet" {
+  route_table_id         = aws_route_table.onprem_public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.onprem.id
+}
+
+# Monitoring VPC route
+resource "aws_route" "onprem_public_to_monitoring" {
+  route_table_id         = aws_route_table.onprem_public.id
+  destination_cidr_block = var.monitoring_vpc_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+# Associate public subnet with public route table
+resource "aws_route_table_association" "onprem_public" {
+  subnet_id      = aws_subnet.onprem_public.id
+  route_table_id = aws_route_table.onprem_public.id
+}
 
 # Security group for Compute VPC interface endpoints
 

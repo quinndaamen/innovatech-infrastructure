@@ -12,3 +12,4 @@ output "compute_vpc_id" {
   description = "ID of the Compute VPC"
   value       = module.network.compute_vpc_id
 }
+

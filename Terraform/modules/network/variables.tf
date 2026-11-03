@@ -17,3 +17,9 @@ variable "environment" {
   description = "Environment name"
   type        = string
 }
+
+variable "onprem_vpc_cidr" {
+  description = "CIDR block for the simulated on-premises VPC"
+  type        = string
+}
+

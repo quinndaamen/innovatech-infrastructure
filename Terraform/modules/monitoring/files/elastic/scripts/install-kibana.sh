@@ -28,7 +28,9 @@ SERVICE_FILE="/etc/systemd/system/kibana.service"
 ENV_DIR="/etc/kibana"
 ENV_FILE="${ENV_DIR}/kibana.env"
 
-SSM_PARAMETER="/innovatech/dev/kibana/service-account-token"
+ENVIRONMENT="__ENVIRONMENT__"
+
+SSM_PARAMETER="/innovatech/${ENVIRONMENT}/kibana/service-account-token"
 
 echo "Starting Kibana ${ELASTIC_VERSION} installation"
 
@@ -145,7 +147,12 @@ get_existing_key() {
     local key_name="$1"
 
     if [ -f "${ENV_FILE}" ]; then
-        sed -n "s/^${key_name}=//p" "${ENV_FILE}" | head -n 1
+        awk -F= -v key="${key_name}" \
+            '$1 == key {
+                sub(/^[^=]*=/, "")
+                print
+                exit
+            }' "${ENV_FILE}"
     fi
 }
 
@@ -187,48 +194,19 @@ chmod 640 "${ENV_FILE}"
 # CONFIGURE KIBANA
 # ============================================================
 
-echo "Configuring Kibana..."
+echo "Restoring original Kibana configuration..."
 
-# Remove existing active versions of settings managed by this script.
-# This prevents duplicate YAML keys on subsequent installations.
+TEMP_CONFIG="$(mktemp)"
 
-python3 - "${CONFIG_DIR}/kibana.yml" <<'PYTHON'
-import sys
+# Extract the original configuration from the installation archive.
+tar -xOf "${ARCHIVE}" \
+    "kibana-${ELASTIC_VERSION}/config/kibana.yml" \
+    > "${TEMP_CONFIG}"
 
-config_file = sys.argv[1]
+# Replace the existing configuration with the clean original.
+mv "${TEMP_CONFIG}" "${CONFIG_DIR}/kibana.yml"
 
-managed_keys = {
-    "server.host",
-    "server.port",
-    "elasticsearch.hosts",
-    "elasticsearch.ssl.certificateAuthorities",
-    "elasticsearch.serviceAccountToken",
-    "xpack.security.encryptionKey",
-    "xpack.reporting.encryptionKey",
-    "xpack.encryptedSavedObjects.encryptionKey",
-}
-
-with open(config_file, "r") as file:
-    lines = file.readlines()
-
-filtered_lines = []
-
-for line in lines:
-    stripped = line.strip()
-
-    if not stripped or stripped.startswith("#"):
-        filtered_lines.append(line)
-        continue
-
-    key = stripped.split(":", 1)[0].strip()
-
-    if key not in managed_keys:
-        filtered_lines.append(line)
-
-with open(config_file, "w") as file:
-    file.writelines(filtered_lines)
-
-PYTHON
+echo "Generating Innovatech Kibana configuration..."
 
 cat >> "${CONFIG_DIR}/kibana.yml" <<EOF
 
@@ -239,6 +217,8 @@ cat >> "${CONFIG_DIR}/kibana.yml" <<EOF
 server.host: "${KIBANA_PRIVATE_IP}"
 server.port: 5601
 
+path.data: "${HOME_DIR}"
+
 elasticsearch.hosts:
   - "https://${ELASTICSEARCH_PRIVATE_IP}:9200"
 
@@ -248,18 +228,35 @@ elasticsearch.ssl.certificateAuthorities:
 elasticsearch.serviceAccountToken: "\${KIBANA_SERVICE_TOKEN}"
 
 xpack.security.encryptionKey: "\${KIBANA_SECURITY_ENCRYPTION_KEY}"
+
 xpack.reporting.encryptionKey: "\${KIBANA_REPORTING_ENCRYPTION_KEY}"
+
 xpack.encryptedSavedObjects.encryptionKey: "\${KIBANA_SAVED_OBJECTS_ENCRYPTION_KEY}"
+
 EOF
+
 
 # ============================================================
 # SET FILE PERMISSIONS
 # ============================================================
 
+echo "Setting Kibana permissions..."
+
+# Keep application files owned by root.
 chown -R root:kibana "${EXTRACTED_DIR}"
 
+# Kibana needs write access to its runtime directories.
+mkdir -p "${EXTRACTED_DIR}/data"
+
+# Recursively fix existing files as well.
+chown -R kibana:kibana "${EXTRACTED_DIR}/data"
+
+chmod 750 "${EXTRACTED_DIR}/data"
+
+# Give Kibana ownership of its log and configured data directories.
 chown -R kibana:kibana "${LOG_DIR}" "${HOME_DIR}"
 
+# Protect the configuration.
 chmod 640 "${CONFIG_DIR}/kibana.yml"
 
 # ============================================================

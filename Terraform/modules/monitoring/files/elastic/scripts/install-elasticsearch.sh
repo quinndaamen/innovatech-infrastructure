@@ -25,7 +25,7 @@ echo "Starting Elasticsearch ${ELASTIC_VERSION} installation"
 # Install dependencies
 # --------------------------------------------------
 
-dnf install -y java-21-amazon-corretto-headless awscli curl
+dnf install -y java-21-amazon-corretto-headless awscli 
 
 # --------------------------------------------------
 # Prepare installation directory
@@ -154,32 +154,59 @@ echo "Waiting for Elasticsearch to become available..."
 
 for attempt in $(seq 1 60); do
 
-    if curl --silent --fail \
+    status=$(curl --silent \
+        --output /dev/null \
+        --write-out '%{http_code}' \
         --cacert "${CONFIG_DIR}/certs/http_ca.crt" \
-        "https://${ELASTICSEARCH_PRIVATE_IP}:9200" \
-        >/dev/null; then
+        "https://${ELASTICSEARCH_PRIVATE_IP}:9200" || true)
 
+    if [ "${status}" = "200" ] || [ "${status}" = "401" ]; then
         echo "Elasticsearch is responding."
         break
     fi
 
     if [ "${attempt}" -eq 60 ]; then
-        echo "ERROR: Elasticsearch did not become available."
+        echo "ERROR: Elasticsearch did not become available. Last HTTP status: ${status}"
         exit 1
     fi
 
     sleep 10
 done
 
+
+# --------------------------------------------------
+# Publish Elasticsearch CA certificate to S3
+# --------------------------------------------------
+
+echo "Publishing Elasticsearch CA certificate to S3..."
+
+CA_CERT="${CONFIG_DIR}/certs/http_ca.crt"
+
+if [ ! -s "${CA_CERT}" ]; then
+    echo "ERROR: Elasticsearch CA certificate not found."
+    exit 1
+fi
+
+aws s3 cp \
+    "${CA_CERT}" \
+    "s3://${ELASTIC_BUCKET}/certs/http_ca.crt" \
+    --region "${AWS_REGION}"
+
+echo "Elasticsearch CA certificate published successfully."
+
 # --------------------------------------------------
 # Kibana service-account token provisioning
 # --------------------------------------------------
 
+
+
 echo "Checking Kibana service-account token..."
 
-# Check whether the parameter already exists.
 PARAMETER_ERROR_FILE=$(mktemp)
 chmod 600 "${PARAMETER_ERROR_FILE}"
+
+TOKEN_VALID=false
+EXISTING_TOKEN=""
 
 if EXISTING_TOKEN=$(aws ssm get-parameter \
     --name "${SSM_PARAMETER_NAME}" \
@@ -189,90 +216,78 @@ if EXISTING_TOKEN=$(aws ssm get-parameter \
     --region "${AWS_REGION}" \
     2>"${PARAMETER_ERROR_FILE}"); then
 
-    rm -f "${PARAMETER_ERROR_FILE}"
-
     echo "Existing Kibana token found. Validating it..."
 
-    if ! curl --silent --show-error --fail \
+    if curl --silent --show-error --fail \
         --cacert "${CONFIG_DIR}/certs/http_ca.crt" \
         -H "Authorization: Bearer ${EXISTING_TOKEN}" \
         "https://${ELASTICSEARCH_PRIVATE_IP}:9200/_security/_authenticate" \
-        >/dev/null; then
+        >/dev/null 2>&1; then
 
-        unset EXISTING_TOKEN
-        echo "ERROR: Existing Kibana token is invalid."
-        exit 1
+        TOKEN_VALID=true
     fi
-
-    unset EXISTING_TOKEN
-
-    echo "Existing Kibana token is valid. No rotation required."
 
 else
+    ERROR_MESSAGE=$(cat "${PARAMETER_ERROR_FILE}")
 
-    if ! grep -q "SERVICE_TOKEN ${KIBANA_TOKEN_ID}" \
-        "${CONFIG_DIR}/service_tokens" 2>/dev/null; then
-
-        ERROR_MESSAGE=$(cat "${PARAMETER_ERROR_FILE}")
+    if ! grep -q "ParameterNotFound" <<< "${ERROR_MESSAGE}"; then
         rm -f "${PARAMETER_ERROR_FILE}"
-
-        if ! grep -q "ParameterNotFound" <<< "${ERROR_MESSAGE}"; then
-            echo "ERROR: Unable to retrieve the SSM parameter."
-            echo "${ERROR_MESSAGE}"
-            exit 1
-        fi
-
-        echo "No existing token found. Creating a new Kibana token..."
-
-        # Create token as the Elasticsearch service user.
-        TOKEN_OUTPUT=$(runuser -u elasticsearch -- \
-            env ES_PATH_CONF="${CONFIG_DIR}" \
-            "${EXTRACTED_DIR}/bin/elasticsearch-service-tokens" \
-            create elastic/kibana "${KIBANA_TOKEN_NAME}")
-
-        # Extract token value without printing it.
-        NEW_TOKEN=$(printf '%s\n' "${TOKEN_OUTPUT}" |
-            sed -n 's/^SERVICE_TOKEN .* = //p')
-
-        unset TOKEN_OUTPUT
-
-        if [ -z "${NEW_TOKEN}" ]; then
-            echo "ERROR: Could not extract the generated token."
-            exit 1
-        fi
-
-        # Store the token securely in Parameter Store.
-        if ! aws ssm put-parameter \
-            --name "${SSM_PARAMETER_NAME}" \
-            --type SecureString \
-            --value "${NEW_TOKEN}" \
-            --region "${AWS_REGION}" \
-            >/dev/null; then
-
-            echo "ERROR: Could not store the token in Parameter Store."
-
-            # Remove the token created during this execution.
-            runuser -u elasticsearch -- \
-                env ES_PATH_CONF="${CONFIG_DIR}" \
-                "${EXTRACTED_DIR}/bin/elasticsearch-service-tokens" \
-                delete "${KIBANA_TOKEN_ID}" || true
-
-            unset NEW_TOKEN
-            exit 1
-        fi
-
-        unset NEW_TOKEN
-
-        echo "Kibana token successfully stored in Parameter Store."
-
-    else
-        rm -f "${PARAMETER_ERROR_FILE}"
-
-        echo "ERROR: Token entry already exists locally, but its SSM parameter is missing."
-        echo "The original plaintext token cannot be recovered."
-        echo "Manual recovery is required. Refusing to create a duplicate."
+        echo "ERROR: Unable to retrieve SSM parameter."
         exit 1
     fi
+fi
+
+rm -f "${PARAMETER_ERROR_FILE}"
+unset EXISTING_TOKEN
+
+if [ "${TOKEN_VALID}" = true ]; then
+    echo "Existing Kibana token is valid."
+else
+    echo "Existing Kibana token is missing or invalid. Generating replacement..."
+
+    # Remove old local token entry if present.
+    if grep -q "SERVICE_TOKEN ${KIBANA_TOKEN_ID}" \
+        "${CONFIG_DIR}/service_tokens" 2>/dev/null; then
+
+        runuser -u elasticsearch -- \
+            env ES_PATH_CONF="${CONFIG_DIR}" \
+            "${EXTRACTED_DIR}/bin/elasticsearch-service-tokens" \
+            delete "elastic/kibana" "${KIBANA_TOKEN_NAME}"
+    fi
+
+    # Generate replacement token.
+    TOKEN_OUTPUT=$(runuser -u elasticsearch -- \
+        env ES_PATH_CONF="${CONFIG_DIR}" \
+        "${EXTRACTED_DIR}/bin/elasticsearch-service-tokens" \
+        create elastic/kibana "${KIBANA_TOKEN_NAME}")
+
+    NEW_TOKEN=$(printf '%s\n' "${TOKEN_OUTPUT}" |
+        sed -n 's/^SERVICE_TOKEN .* = //p')
+
+    unset TOKEN_OUTPUT
+
+    if [ -z "${NEW_TOKEN}" ]; then
+        echo "ERROR: Token generation failed."
+        exit 1
+    fi
+
+    # Update SSM Parameter Store.
+    if ! aws ssm put-parameter \
+        --name "${SSM_PARAMETER_NAME}" \
+        --type SecureString \
+        --value "${NEW_TOKEN}" \
+        --overwrite \
+        --region "${AWS_REGION}" \
+        >/dev/null; then
+
+        echo "ERROR: Could not store replacement token."
+        unset NEW_TOKEN
+        exit 1
+    fi
+
+    unset NEW_TOKEN
+
+    echo "Replacement Kibana token stored successfully."
 fi
 
 # --------------------------------------------------

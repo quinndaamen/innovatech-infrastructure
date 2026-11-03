@@ -53,6 +53,7 @@ resource "aws_security_group" "elasticsearch" {
   }
 }
 
+
 # ============================================================
 # SECURITY GROUP: LOGSTASH
 # ============================================================
@@ -76,6 +77,8 @@ resource "aws_security_group" "logstash" {
     Service     = "Logstash"
   }
 }
+
+
 
 # ============================================================
 # SECURITY GROUP: KIBANA
@@ -123,17 +126,26 @@ resource "aws_vpc_security_group_ingress_rule" "elasticsearch_from_kibana" {
   to_port                      = 9200
 }
 
-# ============================================================
-# SECURITY GROUP RULES: LOGSTASH
-# ============================================================
+# logstash
 
 resource "aws_vpc_security_group_ingress_rule" "logstash_from_compute" {
   security_group_id = aws_security_group.logstash.id
   cidr_ipv4         = "10.1.0.0/16"
-  description       = "Allow log ingestion from the Compute VPC"
-  ip_protocol       = "tcp"
-  from_port         = 5044
-  to_port           = 5044
+
+  description = "Allow Beats traffic from Compute VPC"
+  ip_protocol = "tcp"
+  from_port   = 5044
+  to_port     = 5044
+}
+
+resource "aws_vpc_security_group_ingress_rule" "logstash_from_onprem" {
+  security_group_id = aws_security_group.logstash.id
+  cidr_ipv4         = "10.50.0.0/16"
+
+  description = "Allow Beats traffic from simulated on-premises VPC"
+  ip_protocol = "tcp"
+  from_port   = 5044
+  to_port     = 5044
 }
 
 # ============================================================
@@ -328,6 +340,11 @@ resource "aws_s3_bucket" "elastic_packages" {
     Environment = var.environment
     Purpose     = "Elastic Stack installation packages"
   }
+  lifecycle {
+    prevent_destroy = true
+  }
+
+
 }
 
 resource "aws_s3_bucket_public_access_block" "elastic_packages" {
@@ -381,6 +398,15 @@ resource "aws_iam_role_policy" "elastic_s3_read" {
 
         Resource = [
           aws_s3_bucket.elastic_packages.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.elastic_packages.arn}/certs/http_ca.crt"
         ]
       }
     ]
@@ -490,30 +516,39 @@ resource "aws_s3_object" "kibana_package" {
 # ============================================================
 
 locals {
-  elasticsearch_install_script = replace(
+elasticsearch_install_script = replace(
+  replace(
     replace(
       replace(
         replace(
           file("${path.module}/files/elastic/scripts/install-elasticsearch.sh"),
-          "__ELASTIC_VERSION__",
-          var.elastic_version
+          "__ENVIRONMENT__",
+          var.environment
         ),
-        "__ELASTIC_BUCKET__",
-        aws_s3_bucket.elastic_packages.id
+        "__ELASTIC_VERSION__",
+        var.elastic_version
       ),
-      "__AWS_REGION__",
-      var.aws_region
+      "__ELASTIC_BUCKET__",
+      aws_s3_bucket.elastic_packages.id
     ),
-    "__ELASTICSEARCH_PRIVATE_IP__",
-    aws_instance.elasticsearch.private_ip
-  )
+    "__AWS_REGION__", 
+    var.aws_region
+  ),
+  "__ELASTICSEARCH_PRIVATE_IP__",
+  aws_instance.elasticsearch.private_ip
+)
 
-  kibana_install_script = replace(
+
+    kibana_install_script = replace(
     replace(
       replace(
         replace(
           replace(
-            file("${path.module}/files/elastic/scripts/install-kibana.sh"),
+            replace(
+              file("${path.module}/files/elastic/scripts/install-kibana.sh"),
+              "__ENVIRONMENT__",
+              var.environment
+            ),
             "__ELASTIC_VERSION__",
             var.elastic_version
           ),
@@ -531,6 +566,7 @@ locals {
   )
 
   logstash_install_script = replace(
+  replace(
     replace(
       replace(
         replace(
@@ -546,7 +582,10 @@ locals {
     ),
     "__ELASTICSEARCH_PRIVATE_IP__",
     aws_instance.elasticsearch.private_ip
-  )
+  ),
+  "__ENVIRONMENT__",
+  var.environment
+)
 }
 
 # ============================================================
@@ -600,11 +639,13 @@ resource "aws_ssm_association" "install_elasticsearch" {
     values = [aws_instance.elasticsearch.id]
   }
 
+  wait_for_success_timeout_seconds = 900
+
   depends_on = [
     aws_s3_object.elasticsearch_package,
     aws_s3_object.elasticsearch_install_script,
     aws_iam_role_policy_attachment.ssm,
-    aws_iam_role_policy.elastic_s3_read
+    aws_iam_role_policy.elastic_s3_read,
   ]
 }
 
@@ -676,12 +717,16 @@ resource "aws_ssm_association" "install_kibana" {
     values = [aws_instance.kibana.id]
   }
 
+  wait_for_success_timeout_seconds = 900
+
   depends_on = [
     aws_s3_object.kibana_package,
     aws_s3_object.kibana_install_script,
     aws_iam_role_policy_attachment.ssm,
     aws_iam_role_policy.elastic_s3_read,
-    aws_iam_role_policy.elastic_ssm_parameter_read
+    aws_iam_role_policy.elastic_ssm_parameter_read,
+    aws_ssm_association.install_elasticsearch,
+    aws_iam_role_policy_attachment.ssm
   ]
 }
 
@@ -753,11 +798,14 @@ resource "aws_ssm_association" "install_logstash" {
     values = [aws_instance.logstash.id]
   }
 
+  wait_for_success_timeout_seconds = 900
+
   depends_on = [
-    aws_iam_role_policy.elastic_ssm_parameter_read,
     aws_s3_object.logstash_package,
     aws_s3_object.logstash_install_script,
     aws_iam_role_policy_attachment.ssm,
-    aws_iam_role_policy.elastic_s3_read
+    aws_iam_role_policy.elastic_s3_read,
+    aws_iam_role_policy.elastic_ssm_parameter_read,
+    aws_ssm_association.install_elasticsearch,
   ]
 }
