@@ -103,3 +103,13 @@ resource "aws_instance" "onprem_server" {
     Role        = "OnPremSimulation"
   }
 }
+
+resource "aws_vpc_security_group_ingress_rule" "ubuntu_ssh_from_windows" {
+  security_group_id            = aws_security_group.onprem_server.id
+  referenced_security_group_id = aws_security_group.onprem_windows.id
+
+  description = "Allow SSH from simulated Windows attacker"
+  ip_protocol = "tcp"
+  from_port   = 22
+  to_port     = 22
+}

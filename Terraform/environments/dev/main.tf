@@ -7,38 +7,38 @@ module "network" {
   monitoring_vpc_cidr = "10.3.0.0/16"
   onprem_vpc_cidr     = "10.50.0.0/16"
 }
-module "compute" {
-  source = "../../modules/compute"
+# module "compute" {
+#   source = "../../modules/compute"
 
-  environment = "dev"
+#   environment = "dev"
 
-  vpc_id = module.network.compute_vpc_id
+#   vpc_id = module.network.compute_vpc_id
 
-  public_subnet_ids = module.network.compute_public_subnet_ids
+#   public_subnet_ids = module.network.compute_public_subnet_ids
 
-  private_subnet_ids = module.network.compute_private_subnet_ids
+#   private_subnet_ids = module.network.compute_private_subnet_ids
 
-  database_endpoint   = module.database.aurora_endpoint
-  database_port       = module.database.aurora_port
-  database_name       = module.database.database_name
-  database_username   = module.database.database_username
-  database_secret_arn = module.database.database_secret_arn
-}
+#   database_endpoint   = module.database.aurora_endpoint
+#   database_port       = module.database.aurora_port
+#   database_name       = module.database.database_name
+#   database_username   = module.database.database_username
+#   database_secret_arn = module.database.database_secret_arn
+# }
 
-module "database" {
-  source = "../../modules/database"
+# module "database" {
+#   source = "../../modules/database"
 
-  environment        = "dev"
-  vpc_id             = module.network.database_vpc_id
-  private_subnet_ids = module.network.database_private_subnet_ids
+#   environment        = "dev"
+#   vpc_id             = module.network.database_vpc_id
+#   private_subnet_ids = module.network.database_private_subnet_ids
 
-  allowed_web_subnet_cidrs = [
-    "10.1.11.0/24",
-    "10.1.12.0/24"
-  ]
+#   allowed_web_subnet_cidrs = [
+#     "10.1.11.0/24",
+#     "10.1.12.0/24"
+#   ]
 
-  master_password = var.database_master_password
-}
+#   master_password = var.database_master_password
+# }
 
 module "monitoring" {
   source      = "../../modules/monitoring"
