@@ -152,14 +152,14 @@ resource "aws_vpc_security_group_ingress_rule" "logstash_from_onprem" {
 # SECURITY GROUP RULES: KIBANA
 # ============================================================
 
-resource "aws_vpc_security_group_ingress_rule" "kibana_from_compute" {
-  security_group_id = aws_security_group.kibana.id
-  cidr_ipv4         = "10.1.0.0/16"
-  description       = "Allow Kibana access from the Compute VPC"
-  ip_protocol       = "tcp"
-  from_port         = 5601
-  to_port           = 5601
-}
+# resource "aws_vpc_security_group_ingress_rule" "kibana_from_compute" {
+#   security_group_id = aws_security_group.kibana.id
+#   cidr_ipv4         = "10.1.0.0/16"
+#   description       = "Allow Kibana access from the Compute VPC"
+#   ip_protocol       = "tcp"
+#   from_port         = 5601
+#   to_port           = 5601
+# }
 
 # ============================================================
 # IAM ROLE: ELASTIC STACK

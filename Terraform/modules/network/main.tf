@@ -460,7 +460,7 @@ resource "aws_route" "onprem_public_to_monitoring" {
 resource "aws_route_table_association" "onprem_public" {
   subnet_id      = aws_subnet.onprem_public.id
   route_table_id = aws_route_table.onprem_public.id
-}
+} 
 
 # Security group for Compute VPC interface endpoints
 
