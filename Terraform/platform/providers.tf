@@ -8,7 +8,7 @@ terraform {
   backend "gcs" {
     bucket = "innovatech-solutions-514610-tfstate"
     prefix = "innovatech/platform"
-    
+
   }
 
 }
