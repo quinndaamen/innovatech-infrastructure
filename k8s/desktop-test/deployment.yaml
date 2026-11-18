@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hr-staff-desktop
+  namespace: desktops
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate            # stop the old pod before starting a new one (a disk attaches to one pod only)
+  selector:
+    matchLabels:
+      app: hr-staff-desktop   # the Deployment manages pods with this label
+  template:
+    metadata:
+      labels:
+        app: hr-staff-desktop # the Service also finds the pod through this label
+    spec:
+      # Placement: run only on the desktop node pool
+      nodeSelector:
+        workload: desktop     # attracts the pod to nodes with this label
+      tolerations:            # allows the pod on nodes with the desktop taint
+        - key: workload
+          operator: Equal
+          value: desktop
+          effect: NoSchedule
+
+      containers:
+        - name: desktop
+          image: europe-west4-docker.pkg.dev/innovatech-solutions-514610/innovatech-desktops-images/hr-staff:1.0
+          ports:
+            - containerPort: 3000   # the webtop web interface
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Europe/Amsterdam
+          resources:
+            requests:               # reserved on the node: decides how many desktops fit
+              cpu: 500m
+              memory: 1536Mi
+            limits:                 # maximum the pod may use
+              cpu: "2"
+              memory: 3Gi           # also covers /dev/shm, because that volume lives in memory
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            appArmorProfile:
+              type: Unconfined
+            seccompProfile:
+              type: Unconfined
+          volumeMounts:
+            - name: home
+              mountPath: /config
+            - name: shm
+              mountPath: /dev/shm
+
+      volumes:
+        - name: home
+          persistentVolumeClaim:
+            claimName: hr-staff-home   # the PVC from pvc.yaml
+        - name: shm
+          emptyDir:
+            medium: Memory             # the Kubernetes version of docker's --shm-size
+            sizeLimit: 1Gi

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hr-staff-home
+  namespace: desktops
+spec:
+  accessModes:
+    - ReadWriteOnce          # the disk can be attached to one pod at a time
+  storageClassName: standard-rwo   # balanced persistent disk: cheaper than SSD, enough for home folders
+  resources:
+    requests:
+      storage: 10Gi          # small disks have a practical minimum of about 10 GB

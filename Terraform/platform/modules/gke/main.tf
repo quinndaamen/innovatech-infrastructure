@@ -1,6 +1,9 @@
+# GKE Cluster
 resource "google_container_cluster" "innovatech_gke_cluster" {
   name     = "innovatech-gke-cluster"
   location = var.zone
+  network = var.network
+  subnetwork = var.subnetwork
 
   remove_default_node_pool = true
   initial_node_count = 1
@@ -27,21 +30,20 @@ resource "google_container_cluster" "innovatech_gke_cluster" {
   workload_pool = "${var.project_id}.svc.id.goog"
   }
 
-  network = var.network
-  subnetwork = var.subnetwork
-
   deletion_protection = false
   datapath_provider = "ADVANCED_DATAPATH"
 }
 
-resource "google_container_node_pool" "innovatech_node_pool" {
+# Portal node pool
+resource "google_container_node_pool" "innovatech_portal_pool" {
   name       = "innovatech-portal-pool"
   location   = var.zone
   cluster    = google_container_cluster.innovatech_gke_cluster.id
   node_count = 1
+  
 
   node_config {
-    machine_type = "e2-medium"
+    machine_type = "e2-standard-2"
     disk_size_gb = 50
     
     workload_metadata_config {
@@ -52,6 +54,46 @@ resource "google_container_node_pool" "innovatech_node_pool" {
     oauth_scopes    = [
       "https://www.googleapis.com/auth/cloud-platform"
     ]
+
+    labels = {
+      workload = "portal"
+    }
   }
   depends_on = [google_project_iam_member.gke_portal_nodes]
+}
+
+# Desktop node pool
+resource "google_container_node_pool" "innovatech_desktop_pool" {
+  name       = "innovatech-desktop-pool"
+  location   = var.zone
+  cluster    = google_container_cluster.innovatech_gke_cluster.id
+  autoscaling {
+    min_node_count = 1
+    max_node_count = 3
+  }
+  
+  node_config {
+    machine_type = "e2-standard-2"
+    disk_size_gb = 50
+    spot = true
+    taint {
+      key    = "workload"
+      value  = "desktop"
+      effect = "NO_SCHEDULE"
+    }
+    
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+    # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
+    service_account = google_service_account.gke_desktop_nodes.email
+    oauth_scopes    = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+
+    labels = {
+      workload = "desktop"
+    }
+  }
+  depends_on = [google_project_iam_member.gke_desktop_nodes]
 }
