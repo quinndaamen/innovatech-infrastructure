@@ -27,3 +27,11 @@ module "gke" {
   myip          = var.myip
   depends_on    = [module.network]
 }
+
+module "database" {
+  source        = "./modules/database"
+  network       = module.network.innovatech_vpc_id   
+  address        =  "10.40.0.0"
+  region        = var.region
+
+}

@@ -8,7 +8,7 @@ resource "google_artifact_registry_repository" "innovatech_repository" {
 
   depends_on = [google_project_service.apis]
 
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 }
