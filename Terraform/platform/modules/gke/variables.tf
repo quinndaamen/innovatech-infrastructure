@@ -32,3 +32,7 @@ variable "myip" {
   type        = string
   description = "CIDR allowed to reach the Kubernetes API"
 }
+
+variable "node_tags" {
+  type = list(string)
+}

@@ -11,6 +11,7 @@ resource "google_project_service" "apis" {
     "iamcredentials.googleapis.com",
     "secretmanager.googleapis.com",
     "dns.googleapis.com",
+    "certificatemanager.googleapis.com",
   ])
 
   project            = var.project_id

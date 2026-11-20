@@ -1,0 +1,105 @@
+# Keycloak: the central identity provider (REQ-10).
+# Uses the official image from quay.io (NOT the Bitnami chart, whose public images are no longer available).
+# Database: the "keycloak" database on Cloud SQL (private IP). Passwords come from Kubernetes Secrets.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  replicas: 1                      # one instance is enough here. More would need clustering settings.
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      nodeSelector:
+        workload: portal           # run on the portal pool, never on the desktop pool
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.8.2   # pinned. Check for the latest 26.x patch version.
+          args: ["start"]
+          env:
+            # Database
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://10.40.0.3:5432/keycloak   # private IP of Cloud SQL
+            - name: KC_DB_USERNAME
+              value: keycloak
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: password
+            # Behind the Gateway: TLS ends at the load balancer
+            - name: KC_HOSTNAME
+              value: https://keycloak.innovatech.qvnn.me
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            # Health endpoints (served on the management port 9000)
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            # First admin, only used when the database is empty. Replace it with a permanent admin later.
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: username
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: password
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 9000
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"             # Keycloak needs extra CPU while it starts
+              memory: 1536Mi       # a Java application is killed if it goes over its memory limit
+          startupProbe:            # gives the first start (database setup) time
+            httpGet:
+              path: /health/started
+              port: 9000
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  type: ClusterIP
+  selector:
+    app: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

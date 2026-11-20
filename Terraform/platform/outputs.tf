@@ -1,4 +1,4 @@
 output "dns_name_servers" {
-  description = "Nameservers for Innovatech DNS delegation"
-  value       = module.network.dns_name_servers
+  description = "DNS name servers for Innovatech"
+  value       = google_dns_managed_zone.innovatech_zone.name_servers
 }

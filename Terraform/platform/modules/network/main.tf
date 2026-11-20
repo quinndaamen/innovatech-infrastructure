@@ -62,4 +62,21 @@ resource "google_compute_firewall" "innovatech_firewall" {
   
 }
 
+resource "google_compute_firewall" "allow_lb_health_checks" {
+  name          = "innovatech-allow-lb-health-checks"
+  network       = google_compute_network.innovatech_vpc.id
+  direction     = "INGRESS"
+  priority      = 1000
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+  target_tags   = [var.node_tag]
+
+  allow {
+    protocol = "tcp"
+    ports    = var.lb_backend_ports
+  }
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
 

@@ -9,6 +9,11 @@ resource "google_dns_managed_zone" "innovatech_zone" {
   name        = "innovatech-zone"
   dns_name    = "innovatech.qvnn.me."
   description = "Innovatech project zone, delegated from qvnn.me"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+  
 }
 
 resource "google_dns_record_set" "portal" {

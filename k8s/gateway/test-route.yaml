@@ -1,0 +1,17 @@
+# An HTTPRoute tells the Gateway where to send requests for a hostname.
+# Temporary: it uses the portal hostname (which already has a DNS record) for the test.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: test-route
+  namespace: test
+spec:
+  parentRefs:
+    - name: innovatech-gateway
+      namespace: gateway
+  hostnames:
+    - portal.innovatech.qvnn.me
+  rules:
+    - backendRefs:
+        - name: nginx
+          port: 80

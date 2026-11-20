@@ -1,0 +1,29 @@
+
+# The Gateway is the cluster's front door. It creates a global external HTTPS load balancer.
+# It uses the static IP and the wildcard certificate that Terraform created.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: innovatech-gateway
+  namespace: gateway
+  annotations:
+    # Name of the certificate map from certificates.tf (output: certificate_map_name)
+    networking.gke.io/certmap: innovatech-cert-map
+spec:
+  gatewayClassName: gke-l7-global-external-managed   # global external Application Load Balancer
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All          # any namespace may attach routes. Tighten this later with a selector.
+  addresses:
+    - type: NamedAddress
+      value: innovatech-address   # name of the static IP from dns.tf
+ 

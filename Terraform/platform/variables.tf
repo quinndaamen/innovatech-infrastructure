@@ -14,6 +14,10 @@ variable "zone" {
 }
 
 variable "myip" {
-  type  = string
+  type = string
+}
+
+variable "node_tag" {
+  default = ""
 }
 

@@ -16,7 +16,11 @@ output "services_range_name" {
   value = var.services_name
 }
 
-output "dns_name_servers" {
-  description = "Google Cloud DNS nameservers"
-  value       = google_dns_managed_zone.innovatech_zone.name_servers
+# output "dns_name_servers" {
+#   description = "Google Cloud DNS nameservers"
+#   value       = google_dns_managed_zone.innovatech_zone.name_servers
+# }
+
+output "node_tag" {
+  value = var.node_tag
 }
