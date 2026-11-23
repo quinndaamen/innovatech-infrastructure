@@ -28,6 +28,7 @@ spec:
     config:
       type: HTTP
       httpHealthCheck:
+        port: 8080
         requestPath: /realms/master
   targetRef:
     group: ""

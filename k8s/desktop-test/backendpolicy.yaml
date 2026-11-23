@@ -1,0 +1,14 @@
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: jan-desktop-backend
+  namespace: desktops
+spec:
+  default:
+    timeoutSec: 3600
+    connectionDraining:
+      drainingTimeoutSec: 60
+  targetRef:
+    group: ""
+    kind: Service
+    name: hr-staff-desktop

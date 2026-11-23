@@ -1,11 +1,3 @@
-# Keycloak: the central identity provider (REQ-10).
-# Uses the official image from quay.io (NOT the Bitnami chart, whose public images are no longer available).
-# Database: the "keycloak" database on Cloud SQL (private IP). Passwords come from Kubernetes Secrets.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: keycloak
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:

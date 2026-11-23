@@ -45,10 +45,12 @@ resource "google_container_node_pool" "innovatech_portal_pool" {
   cluster    = google_container_cluster.innovatech_gke_cluster.id
   node_count = 1
   
+  
 
   node_config {
     machine_type = "e2-standard-2"
     disk_size_gb = 50
+    tags = var.node_tags
     
     workload_metadata_config {
       mode = "GKE_METADATA"
@@ -80,6 +82,7 @@ resource "google_container_node_pool" "innovatech_desktop_pool" {
     machine_type = "e2-standard-2"
     disk_size_gb = 50
     spot = true
+    tags = var.node_tags
     taint {
       key    = "workload"
       value  = "desktop"

@@ -4,9 +4,11 @@ metadata:
   name: hr-staff-desktop
   namespace: desktops
 spec:
-  type: ClusterIP            # only reachable inside the cluster (we use port-forward to test)
+  type: ClusterIP
   selector:
-    app: hr-staff-desktop    # sends traffic to pods with this label
+    app: hr-staff-desktop
   ports:
-    - port: 3000             # port of the Service
-      targetPort: 3000       # port of the container
+    - name: http
+      port: 4180
+      targetPort: 4180
+      protocol: TCP

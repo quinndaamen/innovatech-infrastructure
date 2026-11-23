@@ -49,5 +49,5 @@ variable "node_tag" {
 
 variable "lb_backend_ports" {
   type    = list(string)
-  default = ["80"]
+  default = ["80", "8080", "4180"]
 }

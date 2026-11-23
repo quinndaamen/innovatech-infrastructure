@@ -6,29 +6,32 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate            # stop the old pod before starting a new one (a disk attaches to one pod only)
+    type: Recreate
   selector:
     matchLabels:
-      app: hr-staff-desktop   # the Deployment manages pods with this label
+      app: hr-staff-desktop
   template:
     metadata:
       labels:
-        app: hr-staff-desktop # the Service also finds the pod through this label
+        app: hr-staff-desktop
     spec:
-      # Placement: run only on the desktop node pool
+      automountServiceAccountToken: false
+
       nodeSelector:
-        workload: desktop     # attracts the pod to nodes with this label
-      tolerations:            # allows the pod on nodes with the desktop taint
+        workload: desktop
+
+      tolerations:
         - key: workload
           operator: Equal
           value: desktop
           effect: NoSchedule
 
       containers:
+        # HR desktop
         - name: desktop
           image: europe-west4-docker.pkg.dev/innovatech-solutions-514610/innovatech-desktops-images/hr-staff:1.0
           ports:
-            - containerPort: 3000   # the webtop web interface
+            - containerPort: 3000
           env:
             - name: PUID
               value: "1000"
@@ -37,12 +40,12 @@ spec:
             - name: TZ
               value: Europe/Amsterdam
           resources:
-            requests:               # reserved on the node: decides how many desktops fit
+            requests:
               cpu: 500m
               memory: 1536Mi
-            limits:                 # maximum the pod may use
+            limits:
               cpu: "2"
-              memory: 3Gi           # also covers /dev/shm, because that volume lives in memory
+              memory: 3Gi
           readinessProbe:
             tcpSocket:
               port: 3000
@@ -59,11 +62,88 @@ spec:
             - name: shm
               mountPath: /dev/shm
 
+        # Keycloak authentication proxy
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
+          ports:
+            - containerPort: 4180
+          args:
+            - --provider=keycloak-oidc
+            - --client-id=desktop-proxy
+            - --client-secret=$(CLIENT_SECRET)
+            - --cookie-secret=$(COOKIE_SECRET)
+            - --oidc-issuer-url=https://keycloak.innovatech.qvnn.me/realms/innovatech
+            - --oidc-email-claim=email
+            - --oidc-groups-claim=groups
+            - --scope=openid email profile groups
+            - --redirect-url=https://jan.desktops.innovatech.qvnn.me/oauth2/callback
+            - --http-address=0.0.0.0:4180
+            - --upstream=http://127.0.0.1:3000/
+            - --allowed-group=hr-staff
+            - --authenticated-emails-file=/etc/oauth2-proxy/allowed-emails
+            - --email-domain=*
+            - --reverse-proxy=true
+            - --skip-provider-button=true
+            - --code-challenge-method=S256
+            - --cookie-secure=true
+            - --cookie-httponly=true
+            - --cookie-samesite=lax
+            - --ping-path=/ping
+          env:
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jan-proxy
+                  key: client-secret
+            - name: COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jan-proxy
+                  key: cookie-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 4180
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 2000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: allowed-emails
+              mountPath: /etc/oauth2-proxy
+              readOnly: true
+            - name: proxy-tmp
+              mountPath: /tmp
+
       volumes:
         - name: home
           persistentVolumeClaim:
-            claimName: hr-staff-home   # the PVC from pvc.yaml
+            claimName: hr-staff-home
+
         - name: shm
           emptyDir:
-            medium: Memory             # the Kubernetes version of docker's --shm-size
+            medium: Memory
             sizeLimit: 1Gi
+
+        - name: allowed-emails
+          configMap:
+            name: jan-allowed-emails
+            items:
+              - key: allowed-emails
+                path: allowed-emails
+
+        - name: proxy-tmp
+          emptyDir: {}
