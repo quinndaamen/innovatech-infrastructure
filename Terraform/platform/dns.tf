@@ -13,7 +13,7 @@ resource "google_dns_managed_zone" "innovatech_zone" {
   lifecycle {
     prevent_destroy = true
   }
-  
+
 }
 
 resource "google_dns_record_set" "portal" {

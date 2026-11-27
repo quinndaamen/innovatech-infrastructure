@@ -1,0 +1,117 @@
+# Needs these Secrets in namespace "portal" first:
+#   portal-db (host, password), portal-proxy-client (client-secret), cookie-portal (cookie-secret)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal
+  namespace: portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portal
+  template:
+    metadata:
+      labels:
+        app: portal
+    spec:
+      nodeSelector:
+        workload: portal
+      containers:
+        - name: api
+          image: europe-west4-docker.pkg.dev/innovatech-solutions-514610/innovatech-desktops-images/portal:1.2
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef: { name: portal-db, key: host }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: portal-db, key: password }
+            - name: DESKTOPS_DOMAIN
+              value: desktops.innovatech.qvnn.me
+            - name: ADMIN_GROUPS
+              value: hr-admin,admin
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          readinessProbe:       # the app listens on localhost, so probe from inside the container
+            exec:
+              command: ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+            periodSeconds: 10
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+          args:
+            - --provider=keycloak-oidc
+            - --oidc-issuer-url=https://keycloak.innovatech.qvnn.me/realms/innovatech
+            - --client-id=portal
+            - --redirect-url=https://portal.innovatech.qvnn.me/oauth2/callback
+            - --upstream=http://127.0.0.1:8000
+            - --http-address=0.0.0.0:4180
+            - --email-domain=*          # every employee of the realm may log in; the app decides what they see
+            - --cookie-secure=true
+            - --reverse-proxy=true
+            - --skip-provider-button=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: { name: portal-proxy-client, key: client-secret }
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef: { name: cookie-portal, key: cookie-secret }
+          ports:
+            - containerPort: 4180
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits:   { cpu: 200m, memory: 128Mi }
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 4180
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal
+  namespace: portal
+spec:
+  selector:
+    app: portal
+  ports:
+    - port: 4180
+      targetPort: 4180
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portal
+  namespace: portal
+spec:
+  parentRefs:
+    - name: innovatech-gateway
+      namespace: gateway
+  hostnames:
+    - portal.innovatech.qvnn.me
+  rules:
+    - backendRefs:
+        - name: portal
+          port: 4180
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: portal
+  namespace: portal
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        port: 4180
+        requestPath: /ping
+  targetRef:
+    group: ""
+    kind: Service
+    name: portal

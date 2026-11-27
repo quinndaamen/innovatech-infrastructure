@@ -1,0 +1,107 @@
+# Needs Secret "worker-keycloak" (client-secret) in namespace portal. Reuses portal-db.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: worker
+  namespace: portal
+---
+# Identity for the archive Job. No Kubernetes permissions: it only exists so Google IAM
+# can grant it write access to the archive bucket (see Terraform storage.tf).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: archiver
+  namespace: desktops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: desktop-worker
+  namespace: desktops
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims", "configmaps", "secrets", "services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.gke.io"]
+    resources: ["healthcheckpolicies", "gcpbackendpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: desktop-worker
+  namespace: desktops
+subjects:
+  - kind: ServiceAccount
+    name: worker
+    namespace: portal
+roleRef:
+  kind: Role
+  name: desktop-worker
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: portal
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      serviceAccountName: worker
+      nodeSelector:
+        workload: portal
+      containers:
+        - name: worker
+          image: europe-west4-docker.pkg.dev/innovatech-solutions-514610/innovatech-desktops-images/worker:1.0
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef: { name: portal-db, key: host }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: portal-db, key: password }
+            - name: KEYCLOAK_URL
+              value: https://keycloak.innovatech.qvnn.me
+            - name: KEYCLOAK_REALM
+              value: innovatech
+            - name: KEYCLOAK_CLIENT_ID
+              value: onboarding-worker
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: { name: worker-keycloak, key: client-secret }
+            - name: ARCHIVE_BUCKET
+              value: innovatech-solutions-514610-home-archives
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
