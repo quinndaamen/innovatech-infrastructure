@@ -1,0 +1,50 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "desktop.name" . }}
+  labels:
+    {{- include "desktop.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
+  hostnames:
+    - {{ include "desktop.hostname" . }}
+  rules:
+    - backendRefs:
+        - name: {{ include "desktop.name" . }}
+          port: {{ include "desktop.servicePort" . }}
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: {{ include "desktop.name" . }}
+  labels:
+    {{- include "desktop.labels" . | nindent 4 }}
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        port: {{ include "desktop.servicePort" . }}
+        requestPath: {{ if .Values.auth.enabled }}/ping{{ else }}/{{ end }}
+  targetRef:
+    group: ""
+    kind: Service
+    name: {{ include "desktop.name" . }}
+---
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: {{ include "desktop.name" . }}
+  labels:
+    {{- include "desktop.labels" . | nindent 4 }}
+spec:
+  default:
+    timeoutSec: {{ .Values.gateway.backendTimeoutSec }}
+  targetRef:
+    group: ""
+    kind: Service
+    name: {{ include "desktop.name" . }}
+{{- end }}

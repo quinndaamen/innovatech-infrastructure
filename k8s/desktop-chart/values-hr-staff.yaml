@@ -1,0 +1,8 @@
+role: hr-staff
+group: hr-staff
+image:
+  repository: europe-west4-docker.pkg.dev/innovatech-solutions-514610/innovatech-desktops-images/hr-staff
+  tag: "1.0"
+resources:
+  requests: { cpu: 500m, memory: 1536Mi }
+  limits:   { cpu: "2",  memory: 3Gi }

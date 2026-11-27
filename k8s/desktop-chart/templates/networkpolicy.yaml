@@ -1,0 +1,19 @@
+{{- if and .Values.networkPolicy.enabled .Values.auth.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "desktop.name" . }}
+  labels:
+    {{- include "desktop.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "desktop.selector" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    # only the oauth2-proxy port is reachable; port 3000 (the desktop) is not
+    - ports:
+        - protocol: TCP
+          port: 4180
+{{- end }}

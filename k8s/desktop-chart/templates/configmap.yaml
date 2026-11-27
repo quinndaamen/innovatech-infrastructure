@@ -1,0 +1,12 @@
+{{- if .Values.auth.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: owner-{{ include "desktop.user" . }}
+  labels:
+    {{- include "desktop.labels" . | nindent 4 }}
+data:
+  # oauth2-proxy only lets these emails in: this is the owner check
+  emails: |
+    {{ required "email is required (--set email=jan@...)" .Values.email }}
+{{- end }}

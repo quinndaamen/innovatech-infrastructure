@@ -1,0 +1,11 @@
+role: developer
+group: developer
+image:
+  repository: europe-west4-docker.pkg.dev/innovatech-solutions-514610/innovatech-desktops-images/developer
+  tag: "1.0"
+resources:
+  requests: { cpu: "1",  memory: 3Gi }
+  limits:   { cpu: "2",  memory: 4Gi }
+shmSize: 2Gi
+storage:
+  size: 20Gi

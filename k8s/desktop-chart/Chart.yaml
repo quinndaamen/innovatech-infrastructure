@@ -1,0 +1,6 @@
+apiVersion: v2
+name: desktop
+description: One per-user remote desktop (webtop) for Innovatech
+type: application
+version: 0.1.0
+appVersion: "1.0"

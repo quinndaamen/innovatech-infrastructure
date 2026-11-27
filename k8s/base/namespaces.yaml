@@ -1,0 +1,10 @@
+# k8s/base/namespaces.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portal

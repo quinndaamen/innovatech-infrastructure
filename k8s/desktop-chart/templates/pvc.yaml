@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "desktop.home" . }}
+  labels:
+    {{- include "desktop.labels" . | nindent 4 }}
+  annotations:
+    # helm uninstall must NOT delete the disk: offboarding archives it first
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.storage.className }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}

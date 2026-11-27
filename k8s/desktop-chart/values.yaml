@@ -1,0 +1,45 @@
+# ---- Per user (always set by the worker with --set) ----
+username: ""            # lowercase letters, digits, hyphens
+email: ""               # the only person allowed on this desktop
+
+# ---- Per role (set in values-<role>.yaml) ----
+role: hr-staff
+group: hr-staff         # Keycloak group allowed to log in
+image:
+  repository: europe-west4-docker.pkg.dev/innovatech-solutions-514610/innovatech-desktops-images/hr-staff
+  tag: "1.0"
+resources:
+  requests:
+    cpu: 500m
+    memory: 1536Mi
+  limits:
+    cpu: "2"
+    memory: 3Gi
+shmSize: 1Gi
+
+# ---- Same for every desktop ----
+domain: desktops.innovatech.qvnn.me     # hostname = <username>.<domain>
+storage:
+  size: 10Gi
+  className: standard-rwo
+
+nodePool: desktop       # matches the node label and taint workload=desktop
+
+auth:
+  enabled: true
+  proxyImage: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+  issuerUrl: https://keycloak.innovatech.qvnn.me/realms/innovatech   # adjust to your realm
+  clientId: desktop-proxy
+  clientSecretName: desktop-proxy-client   # shared Secret, key: client-secret
+  # cookie Secret is created by the worker before helm install, key: cookie-secret
+  # (default name: cookie-<username>)
+  cookieSecretName: ""
+
+gateway:
+  enabled: true
+  name: innovatech-gateway       # adjust to your Gateway
+  namespace: gateway             # adjust to the Gateway's namespace
+  backendTimeoutSec: 3600        # long timeout: desktop sessions use websockets
+
+networkPolicy:
+  enabled: true
